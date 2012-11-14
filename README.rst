@@ -64,7 +64,7 @@ Open Questions - 発表のためのネタ
  - REST API - mochiweb, webmachineなど
  - Distributed Erlang
 
-
+- Riakドキュメント `オリジナル (英語) <http://docs.basho.com/riak/latest/>`_ / `日本語訳 <http://docs.basho.co.jp/riak/latest/>`_
 
 Logs
 ====
