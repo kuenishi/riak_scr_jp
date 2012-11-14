@@ -47,4 +47,4 @@ Open Questions - 発表のためのネタ
 
 - `Connpass page <http://connpass.com/event/1265/>`_
 - `Keynote <https://gist.github.com/4044699>`_ by @kuenishi
-- walkthrough around put request by @ksauzz
+-  `walkthrough around put request <http://gist-slide.appspot.com/4069613/slides.md>`_ by @ksauzz
