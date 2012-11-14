@@ -7,16 +7,18 @@ Riak Source Code Reading @Tokyo
 
  - 隔週、19時スタート、できれば火曜日
  - 入門・中級レベルと、ガチのソースコード解説を1セッションずつ
+ - Open Questionsから発表できそうな問題を調べてきて発表
+ - 発表した人にはマグカップまたはビアグラスをプレゼント（したい）
  - ビールはひとり2本まで
- - 発表した人にはマグカップをプレゼント（したい）
 
 - 皆勤賞の人にはTシャツをプレゼント（したい）
 - 何か発表したい人、運営に意見あるひとはPull Requestでどうぞ
 
+
 Open Questions - 発表のためのネタ
 -------------------------------------
 
-ソースコードレベルでの解説が基本
+ソースコードレベルでの解説が基本(なにか気になったら随時Pull Requestください)
 
 - 障害時の挙動、primaryへの昇格は具体的にどうなるか？
 - w, dw, pw ってなに？
@@ -35,6 +37,38 @@ Open Questions - 発表のためのネタ
 - riak_api / erlang_protobuffs, mochiweb, poolboy, erlydtl, webmachineなど
 
 
+開催の趣旨というかゴール
+------------------------------
+
+- Riakの内部を理解して @kuenishi と @ksauzz が日本でちゃんと仕事できるようになる
+- Riakの中で使われている技術はすごいのか？すごくないのか？？がよくわからない
+- riak_coreはフレームワークなので、それを使って何か作ってもらいたい
+
+
+基礎知識
+------------
+
+- `Dynamo <http://www.allthingsdistributed.com/2007/10/amazons_dynamo.html>`_
+- Erlang/OTP全般
+
+ - `なぜErlangなのか <http://ymotongpoo.hatenablog.com/entry/20110322/1300776826>`_
+ - `プログラミングErlang <http://www.amazon.co.jp/dp/4274067149>`_
+ - `Learn You Some Erlang <http://learnyousomeerlang.com>`_
+ - `Learn You Some Erlang 日本語訳 <http://www.ymotongpoo.com/works/lyse-ja/>`_ by ymotongpoo
+
+- キーワード
+
+ - DHT/Chord, Replication, Quorum, Vector Clock
+ - Bloom filter
+ - LevelDBとかLSM-tree
+ - REST API - mochiweb, webmachineなど
+ - Distributed Erlang
+
+
+
+Logs
+====
+
 #1 2012/11/28
 -------------
 
@@ -48,3 +82,5 @@ Open Questions - 発表のためのネタ
 - `Connpass page <http://connpass.com/event/1265/>`_
 - `Keynote <https://gist.github.com/4044699>`_ by @kuenishi
 -  `walkthrough around put request <http://gist-slide.appspot.com/4069613/slides.md>`_ by @ksauzz
+
+- 参加者：分散システムに興味あるひと、仕事に使いたい、MySQLであふれる、類似製品を扱っているetc - Erlangは初めてというひともちらほら
