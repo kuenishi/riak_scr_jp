@@ -48,7 +48,7 @@ Open Questions - 発表のためのネタ
 基礎知識
 ------------
 
-- `Dynamo <http://www.allthingsdistributed.com/2007/10/amazons_dynamo.html>`_
+- `Dynamo <http://www.allthingsdistributed.com/2007/10/amazons_dynamo.html>`_ `和訳 <https://gist.github.com/2657692>`_
 - Erlang/OTP全般
 
  - `なぜErlangなのか <http://ymotongpoo.hatenablog.com/entry/20110322/1300776826>`_
