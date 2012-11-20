@@ -27,6 +27,7 @@ Open Questions - 発表のためのネタ
 - テスト
 - eper, etop, dtrace, tool群
 - get, put 性能のオーダーとか勘所
+- deleteの動作（Tombstoneなど
 - それぞれのAPIのレビュー
 - インデックスがアトミックに更新されている？
 - 遅いなと思ったときの解析とかチューニング (reserved for @itawasa)
