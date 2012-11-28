@@ -75,7 +75,7 @@ Logs
 -------------
 
 - `Connpass page <http://connpass.com/event/1396/>`_
-- Riak introduction by @IanMLewis
+- `Let's りあっくぅ <https://docs.google.com/presentation/d/1TEUie_V7kr6Z7reeNNnQTUQUWcWzFfHXFZxtgofEx5Q/edit#slide=id.p>`_ by @IanMLewis
 - Bitcask / LevelDB 使いわけ＆チューニング @csakatoku
 
 #0 2012/11/13
