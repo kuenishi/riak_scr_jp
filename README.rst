@@ -84,6 +84,8 @@ Logs
 - `Connpass page <http://connpass.com/event/1396/>`_
 - `Let's りあっくぅ <https://docs.google.com/presentation/d/1TEUie_V7kr6Z7reeNNnQTUQUWcWzFfHXFZxtgofEx5Q/edit#slide=id.p>`_ by @IanMLewis
 - `Bitcask / LevelDB 使いわけ＆チューニング <https://github.com/kuenishi/riak_scr_jp/blob/master/%231/csakatoku.md>`_ @csakatoku
+- Riakのインストール、Pythonクライアントで叩いてみた、riak_control
+- bitcask / eleveldb の議論は割と盛り上がった
 
 #0 2012/11/13
 -------------
