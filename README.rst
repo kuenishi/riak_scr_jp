@@ -71,12 +71,19 @@ Open Questions - 発表のためのネタ
 Logs
 ====
 
+#2 2012/12/11
+-------------
+
+- `Connpass page <http://connpass.com/event/1518/>`_
+- MapReduce by @Masahito
+- Client使ってみた & Conflict Resolution (& riak_dt?) by @nobu_k
+
 #1 2012/11/28
 -------------
 
 - `Connpass page <http://connpass.com/event/1396/>`_
 - `Let's りあっくぅ <https://docs.google.com/presentation/d/1TEUie_V7kr6Z7reeNNnQTUQUWcWzFfHXFZxtgofEx5Q/edit#slide=id.p>`_ by @IanMLewis
-- Bitcask / LevelDB 使いわけ＆チューニング @csakatoku
+- `Bitcask / LevelDB 使いわけ＆チューニング <https://github.com/kuenishi/riak_scr_jp/blob/master/%231/csakatoku.md>`_ @csakatoku
 
 #0 2012/11/13
 -------------
