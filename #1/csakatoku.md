@@ -45,6 +45,7 @@ LevelDBのPure Erlangでの再実装。
 
 - https://speakerdeck.com/krestenkrab/hanoidb-and-other-riak-hacks
 - https://github.com/krestenkrab/hanoidb
+- https://github.com/basho-labs/riak_kv_hanoidb_backend
 
 ## 原則: Bitcask vs LevelDB
 
