@@ -23,7 +23,6 @@ Open Questions - 発表のためのネタ
 
 - 障害時の挙動、primaryへの昇格は具体的にどうなるか？
 - w, dw, pw ってなに？
-- hinted_handoffってなに？
 - 起動シーケンス
 - テスト
 - eper, etop, dtrace, tool群
@@ -70,6 +69,13 @@ Open Questions - 発表のためのネタ
 
 Logs
 ====
+
+#3 2013/1/8
+-----------
+
+- `Connpass page <http://connpass.com/event/1383/>`_
+- hinted_handoffってなに？ by @csakatoku
+- Implementation of 2i by @kuenishi
 
 #2 2012/12/11
 -------------
