@@ -81,7 +81,7 @@ Logs
 -------------
 
 - `Connpass page <http://connpass.com/event/1518/>`_
-- MapReduce by @Masahito
+- `MapReduce <http://www.slideshare.net/masahitojp/riak-map-reduce-for-beginners-15608362>`_ by @Masahito
 - Client使ってみた & Conflict Resolution (& riak_dt?) by @nobu_k
 
 #1 2012/11/28
