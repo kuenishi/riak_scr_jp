@@ -82,7 +82,7 @@ Logs
 
 - `Connpass page <http://connpass.com/event/1518/>`_
 - `MapReduce <http://www.slideshare.net/masahitojp/riak-map-reduce-for-beginners-15608362>`_ by @Masahito
-- Client使ってみた & Conflict Resolution (& riak_dt?) by @nobu_k
+- `riak-erlang-client <http://www.slideshare.net/nobu_k/riak-source-code-reading-2-erlang-client>`_ by @nobu_k
 
 #1 2012/11/28
 -------------
