@@ -25,6 +25,7 @@ Open Questions - 発表のためのネタ
 - w, dw, pw ってなに？
 - 起動シーケンス
 - テスト
+- AAE (Active Anti Entropy) とは
 - eper, etop, dtrace, tool群
 - get, put 性能のオーダーとか勘所
 - deleteの動作（Tombstoneなど
