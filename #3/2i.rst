@@ -1,0 +1,45 @@
+Riak 2i investigation
+=====================
+
+- インデックスがアトミックに更新されている？
+- hypothesis: how does it work?
+
+ - putting: put the record where routed by the key atomically by LevelDB
+ - getting: broadcast the query and get the return (WoW incredibly inefficient)
+
+- links
+
+ - `secondary indexes <http://docs.basho.com/riak/latest/tutorials/querying/Secondary-Indexes/>`_
+ - `configuring <http://docs.basho.com/riak/latest/cookbooks/Secondary-Indexes---Configuration/>`_
+ - `secondary indexes - examples <http://docs.basho.com/riak/latest/tutorials/Secondary-Indexes---Examples/>`_
+
+When querying
+-------------
+
+- webmachine dispatch table riak_kv_web.erl
+- index query -> localhost:8098/buckets/<spam>/index/egg_bin/eggname
+- -> riak_kv_wm_index
+- -> riak_client:get_index(Bucket, Query, Timeout)
+- invoke riak_kv_index_fsm : with behaviour riak_core_coverage
+
+- riak_core_coverage
+
+ - The coverage fsm is a behavior used to create a plan to cover a set of VNodes, distribute a specified command to each VNode in the plan and then compile the results.
+ - The number of VNodes required for full coverage is based on the number of partitions, the bucket n_val, and the number of primary VNodes from the preference list that are configured to be used by the module implementing this behavior.
+ - 全てのvnodeにコマンドを送って結果をまとめるためのbehaviour
+
+ - init/2 - Return a tuple containing the ModFun to call per vnode, the number of primary preflist vnodes the operation should cover, the service to use to check for available nodes, and the registered name to use to access the vnode master process.
+ - process_results/2, finish/2
+
+- riak_kv_index_fsm:init/2
+
+ - send #riak_kv_index_req_v2 to invoke some MFA, who ... ?
+
+when putting
+------------
+
+- riak_kv_wm_object.erl creating ?MD_INDEX metadata at Riak object
+- riak_kv_put_fsm
+- riak_kv_eleveldb_backend:put/5 has index argument and passes it to eleveldb:write/3
+
+
