@@ -30,6 +30,7 @@ Open Questions - 発表のためのネタ
 - get, put 性能のオーダーとか勘所
 - deleteの動作（Tombstoneなど
 - それぞれのAPIのレビュー
+- leveldbのindex書き込みはアトミックか？
 - 遅いなと思ったときの解析とかチューニング (reserved for @itawasa)
 - riak_pipe - MapReduceの処理フローとか
 - sext
