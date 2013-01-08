@@ -162,6 +162,22 @@ When querying
  - send #riak_kv_index_req_v2 to invoke some MFA, who ... ?
  - found at riak_kv_vnode:handle_coverage/4
 
+  - Mod <= riak_kv_eleveldb_backend
+  - -> handle_coverage_keyfold(...)
+  - ResultFunFun <= fun result_fun_ack/2
+
+  - riak_kv_eleveldb_backend:fold_keys(fold_fun(keys,...), finish_fun(...), [{index, Bucket, Query},{bucket, Bucket}],ModState)
+  - BufferMod <= riak_kv_fold_buffer
+  - fold_fun => BufferMod:add(Bucket,Buffer)
+
+ - riak_kv_eleveldb_backend:fold_keys
+
+  - -> eleveldb:fold_keys(...) with index options
+
+ - -> eleveldb.cc
+
+  - eleveldb::async_iterator_move(...)
+
 when putting
 ------------
 
@@ -177,11 +193,12 @@ when putting
 - riak_kv_eleveldb_backend:put/5 has index argument and passes it to eleveldb:write/3
 
  - LevelDBのindexは略
+ - nifになってた
 
 Appendix
 --------
 
-- erlcscope の紹介
+- `erlcscope <https://github.com/syed/erlcscope>`_ の紹介
 - cscope
 
 CM
