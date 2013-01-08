@@ -84,7 +84,13 @@ Logs
 
 - `Connpass page <http://connpass.com/event/1383/>`_
 - hinted_handoffってなに？ by @csakatoku
+
+ - ちょっと量が多すぎて難易度が高かったので、riak_core をやった後にまたリベンジ
+
 - Implementation of 2i ( #3/2i.rst ) by @kuenishi
+
+ - leveldbのインデックス更新はアトミックなのか？
+
 
 #2 2012/12/11
 -------------
