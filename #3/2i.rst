@@ -52,7 +52,36 @@ Start & Confirm
 Usage
 -----
 
-$ 
+Sample data
+
+| key    | index key       | birth |
+| erlang | functional      | 1986  |
+| ruby   | object_oriented | 1992  |
+| C++    | multi_paradigm  | 1989  |
+| C      | procedural      | 1972  | 
+| python | object_oriented | 1992  |
+
+Putting 2i
+
+::
+
+  $ curl -X PUT http://localhost:8098/buckets/lang/keys/erlang -d 'spam' \
+   -H "x-riak-index-type_bin: functional" -H "x-riak-index-birth_int: 1986"
+  $ curl -X PUT http://localhost:8098/buckets/lang/keys/ruby -d 'spam' \
+   -H "x-riak-index-type_bin: object_oriented" -H "x-riak-index-birth_int: 1992"
+  $ curl -X PUT http://localhost:8098/buckets/lang/keys/C++ -d 'spam' \
+   -H "x-riak-index-type_bin: multi_paradigm" -H "x-riak-index-birth_int: 1989"
+  $ curl -X PUT http://localhost:8098/buckets/lang/keys/C -d 'spam' \
+   -H "x-riak-index-type_bin: procedural" -H "x-riak-index-birth_int: 1972"
+  $ curl -X PUT http://localhost:8098/buckets/lang/keys/python -d 'spam' \
+   -H "x-riak-index-type_bin: object_oriented" -H "x-riak-index-birth_int: 1992"
+
+Querying 2i
+
+::
+
+  $ curl http://localhost:8098/buckets/lang/index/type_bin/object_oriented
+  {"keys":["python","ruby"]}% 
 
 When querying
 -------------
@@ -84,3 +113,7 @@ when putting
 - riak_kv_eleveldb_backend:put/5 has index argument and passes it to eleveldb:write/3
 
 
+CM
+--
+
+`Seven Databases in Seven Weeks <http://pragprog.com/book/rwdata/seven-databases-in-seven-weeks>`_ の日本語版が出ます。主にRiakの部分、かなり勉強になるのでオススメです。
