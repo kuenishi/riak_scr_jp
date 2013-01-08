@@ -54,12 +54,15 @@ Usage
 
 Sample data
 
++--------+-----------------+-------+
 | key    | index key       | birth |
++--------+-----------------+-------+
 | erlang | functional      | 1986  |
 | ruby   | object_oriented | 1992  |
 | C++    | multi_paradigm  | 1989  |
 | C      | procedural      | 1972  | 
 | python | object_oriented | 1992  |
++--------+-----------------+-------+
 
 Putting 2i
 
