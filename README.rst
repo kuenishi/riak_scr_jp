@@ -71,6 +71,14 @@ Open Questions - 発表のためのネタ
 Logs
 ====
 
+#4 2013/1/25
+------------
+
+- 新年会（ビール多め）
+- Conpass page
+- Erlang 入門 by @shkumagai
+- riak_core 入門 by @itawasa
+
 #3 2013/1/8
 -----------
 
