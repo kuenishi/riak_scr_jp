@@ -90,6 +90,12 @@ Querying 2i
   $ curl http://localhost:8098/buckets/lang/index/type_bin/object_oriented
   {"keys":["python","ruby"]}
 
+::
+
+  $ curl http://localhost:8098/buckets/lang/index/birth_int/1991/2000
+  {"keys":["python","ruby"]}
+
+
 With MapReduce
 
 ::
@@ -148,7 +154,7 @@ When querying
  - -> req/3 (just build a record to send) 
  
 
-- riak_core_coverage
+- riak_core_coverage_fsm
 
  - The coverage fsm is a behavior used to create a plan to cover a set of VNodes, distribute a specified command to each VNode in the plan and then compile the results.
  - The number of VNodes required for full coverage is based on the number of partitions, the bucket n_val, and the number of primary VNodes from the preference list that are configured to be used by the module implementing this behavior.
