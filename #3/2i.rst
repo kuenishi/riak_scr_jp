@@ -13,6 +13,47 @@ Riak 2i investigation
  - `configuring <http://docs.basho.com/riak/latest/cookbooks/Secondary-Indexes---Configuration/>`_
  - `secondary indexes - examples <http://docs.basho.com/riak/latest/tutorials/Secondary-Indexes---Examples/>`_
 
+Prequisite
+----------
+
+::
+
+  $ git clone git://github.com/basho/riak
+  $ cd riak && make
+  $ make rel
+  $ cd rel/riak
+  $ emacs etc/app.config
+
+etc/app.config
+
+::
+
+   %% Riak KV config                                                                                      
+   {riak_kv, [
+            %% Storage_backend specifies the Erlang module defining the storage                         
+            %% mechanism that will be used on this node.                                                
+  -         {storage_backend, riak_kv_bitcask_backend},
+  +         {storage_backend, riak_kv_eleveldb_backend},
+
+Start & Confirm
+
+::
+
+  $ bin/riak start
+  $ bin/riak ping
+  pong
+  $ bin/riak attach
+  Attaching to /tmp//Users/kuenishi/src/riak/rel/riak/erlang.pipe.1 (^D to exit)
+
+  (riak@127.0.0.1)1> application:get_env(riak_kv, storage_backend).
+  {ok,riak_kv_eleveldb_backend}
+
+
+Usage
+-----
+
+$ 
+
 When querying
 -------------
 
