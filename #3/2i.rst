@@ -88,7 +88,24 @@ Querying 2i
 ::
 
   $ curl http://localhost:8098/buckets/lang/index/type_bin/object_oriented
-  {"keys":["python","ruby"]}% 
+  {"keys":["python","ruby"]}
+
+With MapReduce
+
+::
+
+  curl -X POST -H "content-type: application/json" http://localhost:8098/mapred -d @-
+  { "inputs" : {"bucket":"lang", "index":"birth_int", "start":1990, "end":1992}, 
+    "query"  : [] }
+
+  [["lang","python"],["lang","ruby"]]%
+
+ちなみに
+
+::
+
+  $ curl "http://localhost:8098/buckets/lang/keys?keys=true"
+  {"keys":["python","C  ","erlang","ruby","C"]}
 
 When querying
 -------------
