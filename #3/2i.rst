@@ -133,9 +133,17 @@ when putting
 ------------
 
 - riak_kv_wm_object.erl creating ?MD_INDEX metadata at Riak object
+
+ - riak_kv_wm_object:malformed_request/2 -> malformed_index_headers(RD, Ctx)
+ -  -> extract_index_fields/1 -> [{IndexField, X}
+ -  -> riak_index:parse_fields/1 -> normalize (make it lower capital)
+ -    -> riak_index:parse_field/3 -> make it integer or binary
+ - accept_doc_body/2 -> put as metadata keyed by ?MD_INDEX as usual riak_object
+
 - riak_kv_put_fsm
 - riak_kv_eleveldb_backend:put/5 has index argument and passes it to eleveldb:write/3
 
+ - LevelDBのindexは略
 
 CM
 --
