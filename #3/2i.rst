@@ -1,0 +1,220 @@
+Riak 2i investigation
+=====================
+
+- インデックスがアトミックに更新されている？
+- hypothesis: how does it work?
+
+ - putting: put the record where routed by the key atomically by LevelDB
+ - getting: broadcast the query and get the return (WoW incredibly inefficient)
+
+- links
+
+ - `secondary indexes <http://docs.basho.com/riak/latest/tutorials/querying/Secondary-Indexes/>`_
+ - `configuring <http://docs.basho.com/riak/latest/cookbooks/Secondary-Indexes---Configuration/>`_
+ - `secondary indexes - examples <http://docs.basho.com/riak/latest/tutorials/Secondary-Indexes---Examples/>`_
+
+Prequisite
+----------
+
+::
+
+  $ git clone git://github.com/basho/riak
+  $ cd riak && make
+  $ make rel
+  $ cd rel/riak
+  $ emacs etc/app.config
+
+etc/app.config
+
+::
+
+   %% Riak KV config                                                                                      
+   {riak_kv, [
+            %% Storage_backend specifies the Erlang module defining the storage                         
+            %% mechanism that will be used on this node.                                                
+  -         {storage_backend, riak_kv_bitcask_backend},
+  +         {storage_backend, riak_kv_eleveldb_backend},
+
+Start & Confirm
+
+::
+
+  $ bin/riak start
+  $ bin/riak ping
+  pong
+  $ bin/riak attach
+  Attaching to /tmp//Users/kuenishi/src/riak/rel/riak/erlang.pipe.1 (^D to exit)
+
+  (riak@127.0.0.1)1> application:get_env(riak_kv, storage_backend).
+  {ok,riak_kv_eleveldb_backend}
+
+
+Usage
+-----
+
+Sample data
+
++--------+-----------------+-------+
+| key    | index key       | birth |
++========+=================+=======+
+| erlang | functional      | 1986  |
++--------+-----------------+-------+
+| ruby   | object_oriented | 1992  |
++--------+-----------------+-------+
+| C++    | multi_paradigm  | 1989  |
++--------+-----------------+-------+
+| C      | procedural      | 1972  | 
++--------+-----------------+-------+
+| python | object_oriented | 1992  |
++--------+-----------------+-------+
+
+Putting 2i
+
+::
+
+  $ curl -X PUT http://localhost:8098/buckets/lang/keys/erlang -d 'spam' \
+   -H "x-riak-index-type_bin: functional" -H "x-riak-index-birth_int: 1986"
+  $ curl -X PUT http://localhost:8098/buckets/lang/keys/ruby -d 'spam' \
+   -H "x-riak-index-type_bin: object_oriented" -H "x-riak-index-birth_int: 1992"
+  $ curl -X PUT http://localhost:8098/buckets/lang/keys/C++ -d 'spam' \
+   -H "x-riak-index-type_bin: multi_paradigm" -H "x-riak-index-birth_int: 1989"
+  $ curl -X PUT http://localhost:8098/buckets/lang/keys/C -d 'spam' \
+   -H "x-riak-index-type_bin: procedural" -H "x-riak-index-birth_int: 1972"
+  $ curl -X PUT http://localhost:8098/buckets/lang/keys/python -d 'spam' \
+   -H "x-riak-index-type_bin: object_oriented" -H "x-riak-index-birth_int: 1992"
+
+Querying 2i
+
+::
+
+  $ curl http://localhost:8098/buckets/lang/index/type_bin/object_oriented
+  {"keys":["python","ruby"]}
+
+::
+
+  $ curl http://localhost:8098/buckets/lang/index/birth_int/1991/2000
+  {"keys":["python","ruby"]}
+
+
+With MapReduce
+
+::
+
+  curl -X POST -H "content-type: application/json" http://localhost:8098/mapred -d @-
+  { "inputs" : {"bucket":"lang", "index":"birth_int", "start":1990, "end":1992}, 
+    "query"  : [] }
+
+  [["lang","python"],["lang","ruby"]]%
+
+ちなみに
+
+::
+
+  $ curl "http://localhost:8098/buckets/lang/keys?keys=true"
+  {"keys":["python","C  ","erlang","ruby","C"]}
+
+When querying
+-------------
+
+- webmachine dispatch table riak_kv_web.erl
+- index query -> localhost:8098/buckets/<spam>/index/egg_bin/eggname
+- -> riak_kv_wm_index:malformed_request/2
+
+ -  -> riak_index:to_index_query/2
+
+::
+
+    %% Normalize the arguments...
+    case riak_index:parse_fields([{IndexField1, X} || X <- Args]) of
+        {ok, []} ->
+            {error, {too_few_arguments, Args}};
+
+        {ok, [{_, Value}]} ->
+            %% One argument == exact match query
+            {ok, {eq, IndexField1, Value}};
+
+        {ok, [{_, Start}, {_, End}]} ->
+            %% Two arguments == range query
+            case End > Start of
+                true ->
+                    {ok, {range, IndexField1, Start, End}};
+                false ->
+                    {error, {invalid_range, Args}}
+            end;
+
+ - exact match か start/end で定義したやつだけ。境界条件は指定できない
+ - Query => {eq, IndexField, Value} or {range, IndexField, Start, End}
+ - `Ctx#ctx.index_query` に保存
+ - -> riak_client:get_index(Bucket, Query)
+ - -> riak_client:get_index(Bucket, Query, Timeout)
+
+- invoke riak_kv_index_fsm : with behaviour riak_core_coverage
+
+ - init/2
+ - -> req/3 (just build a record to send) 
+ 
+
+- riak_core_coverage_fsm
+
+ - The coverage fsm is a behavior used to create a plan to cover a set of VNodes, distribute a specified command to each VNode in the plan and then compile the results.
+ - The number of VNodes required for full coverage is based on the number of partitions, the bucket n_val, and the number of primary VNodes from the preference list that are configured to be used by the module implementing this behavior.
+ - 全てのvnodeにコマンドを送って結果をまとめるためのbehaviour
+
+ - init/2 - Return a tuple containing the ModFun to call per vnode, the number of primary preflist vnodes the operation should cover, the service to use to check for available nodes, and the registered name to use to access the vnode master process.
+ - process_results/2, finish/2
+
+- riak_kv_index_fsm:init/2
+
+ - send #riak_kv_index_req_v2 to invoke some MFA, who ... ?
+ - found at riak_kv_vnode:handle_coverage/4
+
+  - Mod <= riak_kv_eleveldb_backend
+  - -> handle_coverage_keyfold(...)
+  - ResultFunFun <= fun result_fun_ack/2
+
+  - riak_kv_eleveldb_backend:fold_keys(fold_fun(keys,...), finish_fun(...), [{index, Bucket, Query},{bucket, Bucket}],ModState)
+  - BufferMod <= riak_kv_fold_buffer
+  - fold_fun => BufferMod:add(Bucket,Buffer)
+
+ - riak_kv_eleveldb_backend:fold_keys
+
+  - -> eleveldb:fold_keys(...) with index options
+
+ - -> eleveldb.cc
+
+  - eleveldb::async_iterator_move(...)
+
+when putting
+------------
+
+- riak_kv_wm_object.erl creating ?MD_INDEX metadata at Riak object
+
+ - riak_kv_wm_object:malformed_request/2 -> malformed_index_headers(RD, Ctx)
+ -  -> extract_index_fields/1 -> [{IndexField, X}
+ -  -> riak_index:parse_fields/1 -> normalize (make it lower capital)
+ -    -> riak_index:parse_field/3 -> make it integer or binary
+ - accept_doc_body/2 -> put as metadata keyed by ?MD_INDEX as usual riak_object
+
+- riak_kv_put_fsm
+- riak_kv_eleveldb_backend:put/5 has index argument and passes it to eleveldb:write/3
+
+ - LevelDBのindexは略
+ - nifになってた
+
+Q
+-
+
+- leveldbへの書き込みはアトミックなの？ by @shino
+
+ - わからない
+
+Appendix
+--------
+
+- `erlcscope <https://github.com/syed/erlcscope>`_ の紹介
+- cscope
+
+CM
+--
+
+`Seven Databases in Seven Weeks <http://pragprog.com/book/rwdata/seven-databases-in-seven-weeks>`_ の日本語版が出ます。主にRiakの部分、かなり勉強になるのでオススメです。
