@@ -30,7 +30,6 @@ Open Questions - 発表のためのネタ
 - get, put 性能のオーダーとか勘所
 - deleteの動作（Tombstoneなど
 - それぞれのAPIのレビュー
-- インデックスがアトミックに更新されている？
 - 遅いなと思ったときの解析とかチューニング (reserved for @itawasa)
 - riak_pipe - MapReduceの処理フローとか
 - sext
@@ -76,7 +75,7 @@ Logs
 
 - `Connpass page <http://connpass.com/event/1383/>`_
 - hinted_handoffってなに？ by @csakatoku
-- Implementation of 2i by @kuenishi
+- Implementation of 2i ( #3/2i.rst ) by @kuenishi
 
 #2 2012/12/11
 -------------
