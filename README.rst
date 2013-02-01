@@ -73,7 +73,7 @@ Logs
 #5 2013/2/19
 ------------
 
-- Connpass page
+- `Connpass page <http://connpass.com/event/1796/>`_
 - OTP 入門 by @ksauzz
 - 障害時の挙動、primaryへの昇格は具体的にどうなるか？ - ノード追加も by @takabow
 
