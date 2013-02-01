@@ -71,11 +71,11 @@ Open Questions - 発表のためのネタ
 Logs
 ====
 
-#4 2013/1/25
+#4 2013/2/1
 ------------
 
 - 新年会（ビール多め）
-- Conpass page
+- `Conpass page <http://connpass.com/event/1659/>`_
 - Erlang 入門 by @shkumagai
 - riak_core 入門 by @itawasa
 
