@@ -21,7 +21,6 @@ Open Questions - 発表のためのネタ
 
 ソースコードレベルでの解説が基本(なにか気になったら随時Pull Requestください)
 
-- 障害時の挙動、primaryへの昇格は具体的にどうなるか？
 - w, dw, pw ってなに？
 - 起動シーケンス
 - テスト
@@ -71,13 +70,20 @@ Open Questions - 発表のためのネタ
 Logs
 ====
 
+#5 2013/2/19
+------------
+
+- Connpass page
+- OTP 入門 by @ksauzz
+- 障害時の挙動、primaryへの昇格は具体的にどうなるか？ - ノード追加も by @takabow
+
 #4 2013/2/1
 ------------
 
-- 新年会（ビール多め）
-- `Conpass page <http://connpass.com/event/1659/>`_
-- Erlang 入門 by @shkumagai
+- 新年会（ビール多め） @ 福らく屋
+- `Connpass page <http://connpass.com/event/1659/>`_
 - riak_core 入門 by @itawasa
+- Erlang 入門 by @shkumagai
 - Perl から Riak を使うためのモジュール by @myfinder
 
 #3 2013/1/8
