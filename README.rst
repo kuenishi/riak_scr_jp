@@ -78,6 +78,7 @@ Logs
 - `Conpass page <http://connpass.com/event/1659/>`_
 - Erlang 入門 by @shkumagai
 - riak_core 入門 by @itawasa
+- Perl から Riak を使うためのモジュール by @myfinder
 
 #3 2013/1/8
 -----------
