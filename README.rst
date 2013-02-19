@@ -70,6 +70,13 @@ Open Questions - 発表のためのネタ
 Logs
 ====
 
+#6 2013/3/5
+------------
+
+- Connpass page 未登録
+- Erlang開発環境 by @shkumagai
+- Active Anti-Entropy by @itawasa
+
 #5 2013/2/19
 ------------
 
