@@ -82,7 +82,7 @@ Logs
 
 - `Connpass page <http://connpass.com/event/1796/>`_
 - OTP 入門 by @ksauzz
-- 障害時の挙動、primaryへの昇格は具体的にどうなるか？ - ノード追加も by @takabow
+- `Erlang導入からRiakのクラスター参加まで <http://blog.tbl.jp/2013/02/riakscrjp5.html>`_ by @takabow
 
 #4 2013/2/1
 ------------
