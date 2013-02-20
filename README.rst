@@ -73,7 +73,7 @@ Logs
 #6 2013/3/5
 ------------
 
-- Connpass page 未登録
+- `Connpass page <http://connpass.com/event/1897/>`_
 - Erlang開発環境 by @shkumagai
 - Active Anti-Entropy by @itawasa
 
@@ -81,7 +81,7 @@ Logs
 ------------
 
 - `Connpass page <http://connpass.com/event/1796/>`_
-- OTP 入門 by @ksauzz
+- OTP 入門 (see directory #5)by @ksauzz
 - `Erlang導入からRiakのクラスター参加まで <http://blog.tbl.jp/2013/02/riakscrjp5.html>`_ by @takabow
 
 #4 2013/2/1
