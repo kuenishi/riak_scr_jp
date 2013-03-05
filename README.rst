@@ -23,11 +23,10 @@ Open Questions - 発表のためのネタ
 
 - w, dw, pw ってなに？
 - 起動シーケンス
+- リリースパッケージなど
 - テスト
-- AAE (Active Anti Entropy) とは
-- eper, etop, dtrace, tool群
+- eper, etop, dtrace, デバッグ向けtool群
 - get, put 性能のオーダーとか勘所
-- deleteの動作（Tombstoneなど
 - それぞれのAPIのレビュー
 - leveldbのindex書き込みはアトミックか？
 - 遅いなと思ったときの解析とかチューニング (reserved for @itawasa)
