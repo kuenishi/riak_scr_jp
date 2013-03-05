@@ -72,6 +72,7 @@ Logs
 #7 2013/3/21
 ------------
 
+- `Connpass page <http://connpass.com/event/1980/>`_
 - poolboy by @jbking
 - deleteの動作（Tombstoneなど) by @Masahito
 
