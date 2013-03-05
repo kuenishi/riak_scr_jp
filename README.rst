@@ -70,6 +70,12 @@ Open Questions - 発表のためのネタ
 Logs
 ====
 
+#7 2013/3/21
+------------
+
+- poolboy by @jbking
+- deleteの動作（Tombstoneなど) by @Masahito
+
 #6 2013/3/5
 ------------
 
