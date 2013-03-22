@@ -74,7 +74,7 @@ Logs
 
 - `Connpass page <http://connpass.com/event/1980/>`_
 - poolboy by @jbking
-- deleteの動作（Tombstoneなど) by @Masahito
+- `deleteの動作（Tombstoneなど) <http://masahito.hatenablog.com/entry/2013/03/23/012305>`_ by @Masahito
 
 #6 2013/3/5
 ------------
