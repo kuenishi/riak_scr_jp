@@ -44,6 +44,12 @@ Riak-1.3-RELEASENOTE.md [日本語訳] https://gist.github.com/kuenishi/5010318
 - AAE と write がほぼ同時に走ると健全なクラスタでも read repair の可能性がある
 - AAE は Riak KV の機能、Riak Search のデータは守らない
 
+参考
+----
+
+- 設計から実装まで詳しい説明動画
+  http://coffee.jtuple.com/video/AAE.html
+
 動かす
 ======
 
