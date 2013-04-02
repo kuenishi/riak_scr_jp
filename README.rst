@@ -69,6 +69,13 @@ Open Questions - 発表のためのネタ
 Logs
 ====
 
+#8 2013/4/9
+-----------
+
+- `Connpass page <http://connpass.com/event/2096/>`_
+- w, dw, pw by @taketon_
+- Riakのパフォーマンスなど by @rev4t
+
 #7 2013/3/21
 ------------
 
