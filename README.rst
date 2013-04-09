@@ -24,7 +24,6 @@ Open Questions - 発表のためのネタ
 - 起動シーケンス
 - リリースパッケージなど
 - テスト
-- eper, etop, dtrace, デバッグ向けtool群
 - get, put 性能のオーダーとか勘所
 - それぞれのAPIのレビュー
 - leveldbのindex書き込みはアトミックか？
@@ -68,12 +67,12 @@ Open Questions - 発表のためのネタ
 Logs
 ====
 
-#9
---
+#9 2013/4/23
+------------
 
 - Connpass page
 - w, dw, pw (revenge) by @taketon_
-- 
+- eper, etop, dtrace, デバッグ向けtool群 by @ksauzz
 
 #8 2013/4/9
 -----------
