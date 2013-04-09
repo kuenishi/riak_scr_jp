@@ -21,7 +21,6 @@ Open Questions - 発表のためのネタ
 
 ソースコードレベルでの解説が基本(なにか気になったら随時Pull Requestください)
 
-- w, dw, pw ってなに？
 - 起動シーケンス
 - リリースパッケージなど
 - テスト
@@ -68,6 +67,13 @@ Open Questions - 発表のためのネタ
 
 Logs
 ====
+
+#9
+--
+
+- Connpass page
+- w, dw, pw (revenge) by @taketon_
+- 
 
 #8 2013/4/9
 -----------
