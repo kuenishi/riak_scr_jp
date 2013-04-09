@@ -70,7 +70,7 @@ Logs
 #9 2013/4/23
 ------------
 
-- Connpass page
+- `Connpass page <http://connpass.com/event/2215/>`_
 - w, dw, pw (revenge) by @taketon_
 - eper, etop, dtrace, デバッグ向けtool群 by @ksauzz
 
