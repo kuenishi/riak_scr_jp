@@ -77,7 +77,7 @@ Logs
 
 - `Connpass page <http://connpass.com/event/2215/>`_
 - w, dw, pw (revenge) by @taketon_
-- eper, etop, デバッグ向けtool群 + gen_fsm 入門 by @ksauzz
+- `observer, eper デバッグ向けツール群, gen_fsm入門 <http://ksauzz.cs-ap-e1.ycloud.jp/slides/observer-eper/slide.html>`_ by @ksauzz
 
 #8 2013/4/9
 -----------

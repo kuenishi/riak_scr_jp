@@ -1,0 +1,85 @@
+<html>
+  <head>
+    <title><%= title %></title>
+    <meta charset="utf-8" />
+    <style type="text/css" media="screen">
+      <%= read('stylesheets/slides.css') %>
+    </style>
+    <% stylesheets.each do |style| %>
+      <link rel="stylesheet" href="<%= style %>" type="text/css" media="screen" charset="utf-8" />
+    <% end %>
+    <link href='http://fonts.googleapis.com/css?family=Noto+Serif' rel='stylesheet' type='text/css'>
+    <style>
+      body {
+        font-family: 'Noto Serif', serif, Hiragino Maru Gothic Pro;
+        background-color: #000000;
+        color: #FFFFFF;
+        font-size: 28px;
+      }
+      h1, h2, h3, h4, a:visited {
+        color: #8B8989;
+      }
+      h1 { font-size: 2.0em; }
+      h2 { font-size: 1.8em; }
+      strong {
+        color: #CC99FF;
+      }
+      li {
+        list-style-type: none;
+      }
+      img {
+        display: block;
+        margin: auto;
+        margin-top: 15px;
+      }
+      div.right {
+        text-align: right;
+      }
+      #instructions {
+        background-color: #8B8989;
+        border-bottom: 10px #CC99FF;
+      }
+      #track > div .content h1 strong {
+        text-decoration: none;
+      }
+    </style>
+    <script type="text/javascript">
+      <%= read('javascripts/jquery-1.3.2.js') %>
+    </script>
+    <script type="text/javascript" charset="utf-8">
+      <%= read('javascripts/jquery.easing.js') %>
+    </script>
+    <script type="text/javascript" charset="utf-8">
+      <%= read('javascripts/jquery.hash-changed.js') %>
+    </script>
+    <script type="text/javascript" charset="utf-8">
+      <%= read('javascripts/slides.js') %>
+    </script>
+    <% javascripts.each do |javascript| %>
+      <script type="text/javascript" charset="utf-8">
+        <%= javascript %>
+      </script>
+    <% end %>
+    <script type="text/javascript">
+      $(function(){
+         $('img[alt="fsm"]').css("background-color","#FFFFFF");
+      });
+    </script>
+  </head>
+  <body>
+    <div id="instructions">
+      Use the left/right arrow keys to navigate.
+    </div>
+    <div id="slides">
+      <div id="track">
+        <% slides.each_with_index do |slide, idx| %>
+          <div class="<%= slide.classes.join(' ') %>">
+            <div id="slide-<%= idx %>" class="content">
+              <%= slide.html %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </body>
+</html>
