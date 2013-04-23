@@ -204,11 +204,24 @@ gen_fsm:start_link/3はcallbackのinit/1を実行、
      ?DTRACE(?C_PUT_FSM_INIT, [TombNum], ["init", TombStr]),
      {ok, prepare, StateData, 0};
 
+ここで、riak_kv_vnodeに関わるsupervisorを整理
+=============================================
+
+- riak_core_vnode_master (behaviour = gen_server)
+  - start_vnode/2でriak_core_vnode_manager:start_vnode/2を呼ぶ
+    - 最終的に、riak_core_vnode_sup:start_vnode/3でriak_core_vnodeプロセスを起動
+    - riak_core_vnodeでstarted(wait_for_init...)が呼ばれて、初期化完了。riak_core_vnodeはactive状態に。
+- riak_core_vnode_manager (behaviour = gen_server)
+  - vnodeを管理している。get_vnodeとかhandoffとか。
+- riak_core_vnode (behaviour = gen_fsm)
+  - 状態遷移：init -> started -> active ( -> stop )
+  - active状態で、?VNODE_REQを受け、riak_kv_vnode:handle_commandをコール
+    
 gen_fsm:prepare
 ===============
 
-- gen_fsm:send_event/2がriak_kv_vnode/handle_command(?KV_PUT_REQ,,,)から呼ばれたときに、gen_fsmの遷移が開始する。（詳細は#9にて発表）
-- initによりprepare状態になっていたはずなので、prepareから始める。
+- initの返り値にTimeout=0がセットされている。
+- Module:StateName/2でハンドルされるので、すぐに次のprepareに遷移する。
 
 ``riak_kv_put_fsm:prepare/2``::
 
@@ -240,9 +253,6 @@ gen_fsm:prepare
      {next_state, StateName, add_timing(StateName, StateData), 0}.
 
 - next_stateでvalidateを指定。timeoutが0なので、validateへ遷移
-
-続きは#9で
-==========
 
 gen_fsm:validate
 ================
@@ -332,17 +342,222 @@ riak_kv_vnode:coord_put/6
                                     Sender,
                                     riak_kv_vnode_master).
  
+riak_core_vnode_master:command/4
+================================
+
 ``riak_core_vnode_master:command``::
 
  %% Send the command to the preflist given with responses going to Sender
- command([], _Msg, _Sender, _VMaster) ->
-     ok;
  command([{Index, Pid}|Rest], Msg, Sender, VMaster) when is_pid(Pid) ->
      gen_fsm:send_event(Pid, make_request(Msg, Sender, Index)),
      command(Rest, Msg, Sender, VMaster);
- command([{Index,Node}|Rest], Msg, Sender, VMaster) ->
-     proxy_cast({VMaster, Node}, make_request(Msg, Sender, Index)),
-     command(Rest, Msg, Sender, VMaster);
+
+- send_eventで呼び出すPidはriak_core_vnode。
+- riak_core_vnodeはactiveになってるはずなので、riak_core_vnode:active(?VNODE_REQ{},State)にマッチする。
+  - ?VNODE_REQは#riak_vnode_req_v1
+  - make_requestは#riak_vnode_req_v1を返す
+
+riak_core_vnoder:active/2
+================================
+
+``riak_core_vnode:active/2``::
+
+ active(?VNODE_REQ{sender=Sender, request=Request},
+        State=#state{handoff_node=HN}) when HN =:= none ->
+     vnode_command(Sender, Request, State);
+ active(?VNODE_REQ{sender=Sender, request=Request},State) ->
+     vnode_handoff_command(Sender, Request, State);
+
+``riak_core_vnode:vnode_command/3``::
+
+ vnode_command(Sender, Request, State=#state{index=Index,
+                                             mod=Mod,
+                                             modstate=ModState,
+                                             forward=Forward,
+                                             pool_pid=Pool}) ->
+     %% Check if we should forward
+     case Forward of
+         undefined ->
+             Action = Mod:handle_command(Request, Sender, ModState);
+         NextOwner ->
+             lager:debug("Forwarding ~p -> ~p: ~p~n", [node(), NextOwner, Index]),
+             riak_core_vnode_master:command({Index, NextOwner}, Request, Sender,
+                                            riak_core_vnode_master:reg_name(Mod)),
+             Action = continue
+     end,
+         ~~~~~~~~~~~~~~~~
+     end.
+
+- Modはriak_kv_vnodeなので、riak_kv_vnode:handle_command/3が呼び出される
+
+riak_kv_vnode:handle_command/3
+==============================
+
+多分、?KV_PUT_REQにマッチするはず。
+
+``riak_kv_vnode:handle_command/3``::
+
+ handle_command(?KV_PUT_REQ{bkey=BKey,
+                            object=Object,
+                            req_id=ReqId,
+                            start_time=StartTime,
+                            options=Options},
+                Sender, State=#state{idx=Idx}) ->
+     StartTS = os:timestamp(),
+     riak_core_vnode:reply(Sender, {w, Idx, ReqId}),
+     UpdState = do_put(Sender, BKey,  Object, ReqId, StartTime, Options, State),
+     update_vnode_stats(vnode_put, Idx, StartTS),
+     {noreply, UpdState};
+
+``riak_kv_vnode:do_put/7``::
+
+ %% @private
+ %% upon receipt of a client-initiated put
+ do_put(Sender, {Bucket,_Key}=BKey, RObj, ReqID, StartTime, Options, State) ->
+     ~~~~~~~~~~~~~~~~
+     Coord = proplists:get_value(coord, Options, false),
+     PutArgs = #putargs{returnbody=proplists:get_value(returnbody,Options,false) orelse Coord,
+                        coord=Coord,
+                        lww=proplists:get_value(last_write_wins, BProps, false),
+                        bkey=BKey,
+                        robj=RObj,
+                        reqid=ReqID,
+                        bprops=BProps,
+                        starttime=StartTime,
+                        prunetime=PruneTime},
+     {PrepPutRes, UpdPutArgs} = prepare_put(State, PutArgs),
+     {Reply, UpdState} = perform_put(PrepPutRes, State, UpdPutArgs),
+     riak_core_vnode:reply(Sender, Reply),
+ 
+     update_index_write_stats(UpdPutArgs#putargs.is_index, UpdPutArgs#putargs.index_specs),
+     UpdState.
+
+``riak_kv_vnode:perform_put/3``::
+
+ perform_put({true, Obj},
+             #state{idx=Idx,
+                    mod=Mod,
+                    modstate=ModState}=State,
+             #putargs{returnbody=RB,
+                      bkey={Bucket, Key},
+                      reqid=ReqID,
+                      index_specs=IndexSpecs}) ->
+     Val = term_to_binary(Obj),
+     case Mod:put(Bucket, Key, IndexSpecs, Val, ModState) of
+         {ok, UpdModState} ->
+             update_hashtree(Bucket, Key, Val, State),
+             case RB of
+                 true ->
+                     Reply = {dw, Idx, Obj, ReqID};
+                 false ->
+                     Reply = {dw, Idx, ReqID}
+             end;
+         {error, _Reason, UpdModState} ->
+             Reply = {fail, Idx, ReqID}
+     end,
+     {Reply, State#state{modstate=UpdModState}}.
+
+- Modは、initで設定した`Mod = app_helper:gen_env(riak_kv, storage_backend)`が入る。
+- ここでは、`riak_kv_bitcask_backend`を見る。
+
+riak_kv_bitcask_backend:put/5
+=============================
+
+``riak_kv_bitcask_backend:put/5``::
+
+ %% @doc Insert an object into the bitcask backend.
+ -type index_spec() :: {add, Index, SecondaryKey} | {remove, Index, SecondaryKey}.
+ -spec put(riak_object:bucket(), riak_object:key(), [index_spec()], binary(), state()) ->
+                  {ok, state()} |
+                  {error, term(), state()}.
+ put(Bucket, PrimaryKey, _IndexSpecs, Val, #state{ref=Ref}=State) ->
+     BitcaskKey = term_to_binary({Bucket, PrimaryKey}),
+     case bitcask:put(Ref, BitcaskKey, Val) of
+         ok ->
+             {ok, State};
+         {error, Reason} ->
+             {error, Reason, State}
+     end.
+
+``bitcask:put/3``::
+
+ %% @doc Store a key and value in a bitcase datastore.
+ -spec put(reference(), Key::binary(), Value::binary()) -> ok.
+ put(Ref, Key, Value) ->
+     #bc_state { write_file = WriteFile } = State = get_state(Ref),
+ 
+     %% Make sure we have a file open to write
+     case WriteFile of
+         undefined ->
+             throw({error, read_only});
+ 
+         _ ->
+             ok
+     end,
+ 
+     {Ret, State1} = do_put(Key, Value, State, ?DIABOLIC_BIG_INT, undefined),
+     put_state(Ref, State1),
+     Ret.
+
+bitcask:do_put/5
+=============================
+
+``bitcask:do_put/5``::
+
+ %% Internal put - have validated that the file is opened for write
+ %% and looked up the state at this point
+ do_put(_Key, _Value, State, 0, LastErr) ->
+     {{error, LastErr}, State};
+ do_put(Key, Value, #bc_state{write_file = WriteFile} = State, Retries, _LastErr) ->
+     case bitcask_fileops:check_write(WriteFile, Key, Value,
+                                      State#bc_state.max_file_size) of
+         wrap ->
+             %% Time to start a new write file. Note that we do not close the old
+             %% one, just transition it. The thinking is that closing/reopening
+             %% for read only access would flush the O/S cache for the file,
+             %% which may be undesirable.
+             State2 = wrap_write_file(State);
+         fresh ->
+             %% Time to start our first write file.
+             case bitcask_lockops:acquire(write, State#bc_state.dirname) of
+                 {ok, WriteLock} ->
+                     {ok, NewWriteFile} = bitcask_fileops:create_file(
+                                            State#bc_state.dirname,
+                                            State#bc_state.opts),
+                     ok = bitcask_lockops:write_activefile(
+                            WriteLock,
+                            bitcask_fileops:filename(NewWriteFile)),
+                     State2 = State#bc_state{ write_file = NewWriteFile,
+                                              write_lock = WriteLock };
+                 {error, Reason} ->
+                     State2 = undefined,
+                     throw({error, {write_locked, Reason, State#bc_state.dirname}})
+             end;
+ 
+         ok ->
+             State2 = State
+     end,
+ 
+     Tstamp = bitcask_time:tstamp(),
+     {ok, WriteFile2, Offset, Size} = bitcask_fileops:write(
+                                        State2#bc_state.write_file,
+                                        Key, Value, Tstamp),
+     case bitcask_nifs:keydir_put(State2#bc_state.keydir, Key,
+                                  bitcask_fileops:file_tstamp(WriteFile2),
+                                  Size, Offset, Tstamp, true) of
+         ok ->
+             {ok, State2#bc_state { write_file = WriteFile2 }};
+         already_exists ->
+             %% Assuming the timestamps in the keydir are
+             %% valid, there is an edge case where the merge thread
+             %% could have rewritten this Key to a file with a greater
+             %% file_id. Rather than synchronize the merge/writer processes, 
+             %% wrap to a new file with a greater file_id and rewrite
+             %% the key there.  Limit the number of recursions in case
+             %% there is a different issue with the keydir.
+             State3 = wrap_write_file(State2#bc_state { write_file = WriteFile2 }),
+             do_put(Key, Value, State3, Retries - 1, already_exists)
+     end.
 
 参考
 ====
