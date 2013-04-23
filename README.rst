@@ -28,10 +28,8 @@ Open Questions - 発表のためのネタ
 - それぞれのAPIのレビュー
 - leveldbのindex書き込みはアトミックか？
 - 遅いなと思ったときの解析とかチューニング (reserved for @itawasa)
-- riak_pipe - MapReduceの処理フローとか
 - sext
-- folsom
-- lager
+- lager, dtrace
 - riak_api / erlang_protobuffs, mochiweb, poolboy, erlydtl, webmachineなど
 
 
@@ -67,12 +65,19 @@ Open Questions - 発表のためのネタ
 Logs
 ====
 
+#10 2013/5/7
+------------
+
+- `Connpass page <http://connpass.com/event/2309/>`_
+- riak_pipe 入門 by @mille-printemps
+- ets 入門 via folsom by @kuenishi
+
 #9 2013/4/23
 ------------
 
 - `Connpass page <http://connpass.com/event/2215/>`_
 - w, dw, pw (revenge) by @taketon_
-- eper, etop, dtrace, デバッグ向けtool群 by @ksauzz
+- eper, etop, デバッグ向けtool群 + gen_fsm 入門 by @ksauzz
 
 #8 2013/4/9
 -----------
