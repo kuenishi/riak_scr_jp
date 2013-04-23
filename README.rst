@@ -79,7 +79,8 @@ Logs
 
 - `Connpass page <http://connpass.com/event/2096/>`_
 - w, dw, pw by @taketon_
-- Riakのパフォーマンスなど by @rev4t
+- Riak / Riak-CS(Enterprise版) ベンチマークしました by @rev4t
+  http://www.slideshare.net/takashisogabe/riak-19684891
 
 #7 2013/3/21
 ------------
