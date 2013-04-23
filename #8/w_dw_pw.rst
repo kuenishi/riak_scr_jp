@@ -216,6 +216,7 @@ gen_fsm:start_link/3はcallbackのinit/1を実行、
 - riak_core_vnode (behaviour = gen_fsm)
   - 状態遷移：init -> started -> active ( -> stop )
   - active状態で、?VNODE_REQを受け、riak_kv_vnode:handle_commandをコール
+  - riak_kv_vnodeはbehaviour = riak_core_vnodeとして動作する
     
 gen_fsm:prepare
 ===============
@@ -287,6 +288,9 @@ gen_fsm:validate
                      new_state_timeout(precommit, StateData)
              end
      end.
+
+- init_putcoreで、書き込み成功/失敗数を管理するPutcoreをStateに設定する
+- Putcoreの内容はriak_kv_put_fsm:waiting_local_vnode等でUpdateされる。
 
 ``riak_kv_put_fsm:execute/1``::
 
