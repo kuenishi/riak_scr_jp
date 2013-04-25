@@ -2,10 +2,10 @@
 Riak write properties: w, dw, pw
 ================================
 
-Riak Source Code Reading @Tokyo #8
+Riak Source Code Reading @Tokyo #8, #9
 
 :author: Shigekazu Takei ( github:takei-shg / Twitter: @taketon_ )
-:date: 2013-04-09
+:date: 2013-04-09, 2013-04-23
 :riak_core: ``2f13622`` Merge pull request #270 from basho/jrw-dialyzer-fixes
 :riak_kv: ``aab11f4`` Update bitcask dependency to 1.6.1
 
@@ -57,7 +57,7 @@ Riak
 
 - まずバッファに書き込み
 - そのうち永続化される
-- *すぐに永続化したい？*
+- *すぐに永続化したい場合*
 - **dw**
 
   - `Durable write quorum`_
@@ -90,7 +90,7 @@ Riak
 .. _`Hinted Handoff`: https://github.com/kuenishi/riak_scr_jp/blob/master/%233/csakatoku.md
 .. _`Primary write quorum`: http://docs.basho.com/riak/latest/references/Configuration-Files/
 
-Let's read the Codes
+Let's read the Code
 ====================
 
 - riakがクライアントからのリクエストを受け取り、riak_kvの処理を呼び出すまで
@@ -148,9 +148,29 @@ riak_client.erl
                      proc_lib:spawn_link(Node, riak_kv_put_fsm, start_link,
                                          [{raw, ReqId, Me}, RObj, Options])
              end;
+         _ ->
+             UpdObj = riak_object:increment_vclock(RObj, ClientId),
+             case node() of
+                 Node ->
+                     riak_kv_put_fsm:start_link({raw, ReqId, Me}, UpdObj, [asis|Options]);
+                 _ ->
+                     proc_lib:spawn_link(Node, riak_kv_put_fsm, start_link,
+                                         [{raw, ReqId, Me}, RObj, [asis|Options]])
+             end
+     end,
+     %% TODO: Investigate adding a monitor here and eliminating the timeout.
+     Timeout = recv_timeout(Options),
+     wait_for_reqid(ReqId, Timeout);
 
 - version 1.3.1から、riak_kv_put_fsm_sup経由でなく、直接riak_kv_put_fsm:start_link/3を呼ぶ形になっている。
 - Nodeにはnode()により現在のノードの名前が格納されている。
+- riak_kv_put_fsm:start_link/3を呼んで、書き込みの管理をriak_kv_put_fsmに委譲
+
+  - この関数内では、riak_kv_put_fsm:initからのメッセージを受け取った後、wait_for_reqidでメッセージを待ち続ける。
+  - riak_kv_put_fsmでは、init -> prepare -> validate -> waiting_local_vnode -> waiting_remote_vnode -> finish -> stopと遷移する。
+  - riak_kv_put_fsmで書き込みが終了すると、riak_client:wait_for_reqidの中のreceiveにメッセージが届く
+
+.. image:: https://pbs.twimg.com/media/BIjMdN4CUAEeqYr.png
 
 ``riak_kv_put_fsm:start_link/3``::
 
@@ -186,8 +206,9 @@ gen_fsm:start_link
   - gen_fsm:start_linkは同期的なので、initが完了してgen_fsmが初期化されるまでは値を返さない
   - gen_fsmはパフォーマンス的にはあまりよくないが状態管理がしやすいのでriakでよく使われる(by @kuenishiさん)
 
-gen_fsm:start_link/3はcallbackのinit/1を実行、  
-{ok, prepare, StateData, 0}を返し、初期状態をprepareとした形で初期化が完了する。
+- gen_fsm:start_link/3はcallbackのinit/1を実行
+- riak_kv_put_fsm:init/1は,{ok, prepare, StateData, 0}を返す
+- Timeoutが0なので、そのままprepareが呼ばれる。
 
 ``riak_kv_put_fsm:init/1``::
 
@@ -204,11 +225,31 @@ gen_fsm:start_link/3はcallbackのinit/1を実行、
      ?DTRACE(?C_PUT_FSM_INIT, [TombNum], ["init", TombStr]),
      {ok, prepare, StateData, 0};
 
+ここで、riak_kv_vnodeに関わるプロセスを整理
+=============================================
+
+- riak_core_vnode_master (behaviour = gen_server)
+
+  - start_vnode/2でriak_core_vnode_manager:start_vnode/2を呼ぶ
+
+    - 最終的に、riak_core_vnode_sup:start_vnode/3でriak_core_vnodeプロセスを起動
+    - riak_core_vnodeでstarted(wait_for_init...)が呼ばれて、初期化完了。riak_core_vnodeはactive状態に。
+
+- riak_core_vnode_manager (behaviour = gen_server)
+
+  - vnodeを管理している。get_vnodeとかhandoffとか。
+
+- riak_core_vnode (behaviour = gen_fsm)
+
+  - 状態遷移：init -> started -> active ( -> stop )
+  - active状態で、?VNODE_REQを受け、riak_kv_vnode:handle_commandをコール
+  - riak_kv_vnodeはbehaviour = riak_core_vnodeとして動作する
+    
 gen_fsm:prepare
 ===============
 
-- gen_fsm:send_event/2がriak_kv_vnode/handle_command(?KV_PUT_REQ,,,)から呼ばれたときに、gen_fsmの遷移が開始する。（詳細は#9にて発表）
-- initによりprepare状態になっていたはずなので、prepareから始める。
+- initの返り値にTimeout=0がセットされている。
+- よって、Module:StateName/2でハンドルされるので、すぐに次のprepareに遷移。
 
 ``riak_kv_put_fsm:prepare/2``::
 
@@ -240,9 +281,6 @@ gen_fsm:prepare
      {next_state, StateName, add_timing(StateName, StateData), 0}.
 
 - next_stateでvalidateを指定。timeoutが0なので、validateへ遷移
-
-続きは#9で
-==========
 
 gen_fsm:validate
 ================
@@ -278,6 +316,12 @@ gen_fsm:validate
              end
      end.
 
+- init_putcoreで、書き込み成功/失敗数を管理するPutcoreをStateに設定する
+
+  - Putcoreが別モジュールに切り出されているのは、おそらくテスタビリティのため 
+
+- Putcoreの内容はriak_kv_put_fsm:waiting_local_vnode等でUpdateされる。
+
 ``riak_kv_put_fsm:execute/1``::
 
  execute(State=#state{coord_pl_entry = CPL}) ->
@@ -309,7 +353,119 @@ riak_kv_put_fsm:execute_local/1
      %% Must always wait for local vnode - it contains the object with updated vclock
      %% to use for the remotes. (Ignore optimization for N=1 case for now).
      new_state(waiting_local_vnode, StateData2).
- 
+
+- add_timingは、OSのtimestampを記録している。おそらくRiak独自の統計情報に使用する(書き込みに何秒かかったとか) 
+- riak_kv_vnode:coord_put/6で書き込みを行う
+- riak_kv_vnode自身はwaiting_local_vnode状態で書き込みの結果を待つ
+
+``riak_kv_put_fsm:waiting_local_vnode/2``::
+
+ waiting_local_vnode(Result, StateData = #state{putcore = PutCore}) ->
+
+     %% putcoreの累積値をupdate
+     UpdPutCore1 = riak_kv_put_core:add_result(Result, PutCore),
+     case Result of
+         {fail, Idx, _ReqId} ->
+             ?DTRACE(?C_PUT_FSM_WAITING_LOCAL_VNODE, [-1],
+                     [integer_to_list(Idx)]),
+             %% Local vnode failure is enough to sink whole operation
+             process_reply({error, local_put_failed}, StateData#state{putcore = UpdPutCore1});
+
+         %% wが来ただけではlocalで書き込みが完了したか分からないので、まだwaiting_local_vnode
+         {w, Idx, _ReqId} ->
+             ?DTRACE(?C_PUT_FSM_WAITING_LOCAL_VNODE, [1],
+                     [integer_to_list(Idx)]),
+             {next_state, waiting_local_vnode, StateData#state{putcore = UpdPutCore1}};
+         {dw, Idx, PutObj, _ReqId} ->
+             %% Either returnbody is true or coord put merged with the existing
+             %% object and bumped the vclock.  Either way use the returned
+             %% object for the remote vnode
+             ?DTRACE(?C_PUT_FSM_WAITING_LOCAL_VNODE, [2],
+                     [integer_to_list(Idx)]),
+             execute_remote(StateData#state{robj = PutObj, putcore = UpdPutCore1});
+
+         %% dwが来た場合はlocalでの書き込みが完了しているので、remoteに結果をマージさせる
+         {dw, Idx, _ReqId} ->
+             %% Write succeeded without changes to vclock required and returnbody false
+             ?DTRACE(?C_PUT_FSM_WAITING_LOCAL_VNODE, [2],
+                     [integer_to_list(Idx)]),
+             execute_remote(StateData#state{putcore = UpdPutCore1})
+     end.
+
+- riak_kv_vnode:coord_putの返すメッセージがw/dwかで遷移先が変わる
+- dwは最低でも1に設定される(configで0に設定していても。validate内、278行目)
+- よって、実書き込みが最低一回は行われる
+
+``riak_kv_put_fsm:execute_remote/1``::
+
+ execute_remote(StateData=#state{robj=RObj, req_id = ReqId,
+                                 preflist2 = Preflist2, bkey=BKey,
+                                 coord_pl_entry = CoordPLEntry,
+                                 vnode_options=VnodeOptions,
+                                 putcore=PutCore,
+                                 starttime = StartTime}) ->
+     StateData1 = add_timing(execute_remote, StateData),
+     Preflist = [IndexNode || {IndexNode, _Type} <- Preflist2,
+                              IndexNode /= CoordPLEntry],
+     Ps = [[atom2list(Nd), $,, integer_to_list(Idx)] ||
+              {Idx, Nd} <- lists:sublist(Preflist, 4)],
+     ?DTRACE(?C_PUT_FSM_EXECUTE_REMOTE, [], [Ps]),
+     riak_kv_vnode:put(Preflist, BKey, RObj, ReqId, StartTime, VnodeOptions),
+     case riak_kv_put_core:enough(PutCore) of
+         true ->
+             {Reply, UpdPutCore} = riak_kv_put_core:response(PutCore),
+             process_reply(Reply, StateData#state{putcore = UpdPutCore});
+         false ->
+             new_state(waiting_remote_vnode, StateData1)
+     end.
+
+- remoteで書き込みを行うべく、riak_kv_vnode:putに対して書き込みするRObjを渡す
+- riak_kv_put_core:enough/1で、w, dw, pwの値を判定、終了条件を満たしていれば、process_replyで返事をする。
+- なぜenoughでチェックしてからput呼ぶという流れではないのか？
+
+  - riak_core_vnode_master:command側で、Preflist2からheadして投げる先のremoteを判断している
+  - command内でPreflist2に対してリクエストを飛ばすループを回している
+
+- 終了でなければ、remoteでの書き込みを待つ
+
+``riak_kv_put_core:enough/1``::
+
+ %% Check if enough results have been added to respond
+ -spec enough(putcore()) -> boolean().
+ %% The perfect world, all the quorum restrictions have been met.
+ enough(#putcore{w = W, num_w = NumW, dw = DW, num_dw = NumDW, pw = PW, num_pw = NumPW}) when
+       NumW >= W, NumDW >= DW, NumPW >= PW ->
+     true;
+ %% Enough failures that we can't meet the PW restriction
+ enough(#putcore{ num_fail = NumFail, pw_fail_threshold = PWFailThreshold}) when
+       NumFail >= PWFailThreshold ->
+     true;
+ %% Enough failures that we can't meet the DW restriction
+ enough(#putcore{ num_fail = NumFail, dw_fail_threshold = DWFailThreshold}) when
+       NumFail >= DWFailThreshold ->
+     true;
+ %% We've received all DW responses but can't satisfy PW
+ enough(#putcore{n = N, num_dw = NumDW, num_fail = NumFail, pw = PW, num_pw = NumPW}) when
+       NumDW + NumFail >= N, NumPW < PW ->
+     true;
+ enough(_PutCore) ->
+     false.
+
+``riak_kv_put_fsm:waiting_remote_vnode/1``::
+
+ waiting_remote_vnode(Result, StateData = #state{putcore = PutCore}) ->
+     ShortCode = riak_kv_put_core:result_shortcode(Result),
+     IdxStr = integer_to_list(riak_kv_put_core:result_idx(Result)),
+     ?DTRACE(?C_PUT_FSM_WAITING_REMOTE_VNODE, [ShortCode], [IdxStr]),
+     UpdPutCore1 = riak_kv_put_core:add_result(Result, PutCore),
+     case riak_kv_put_core:enough(UpdPutCore1) of
+         true ->
+             {Reply, UpdPutCore2} = riak_kv_put_core:response(UpdPutCore1),
+             process_reply(Reply, StateData#state{putcore = UpdPutCore2});
+         false ->
+             {next_state, waiting_remote_vnode, StateData#state{putcore = UpdPutCore1}}
+     end.
+
 riak_kv_vnode:coord_put/6
 =========================
 
@@ -332,17 +488,240 @@ riak_kv_vnode:coord_put/6
                                     Sender,
                                     riak_kv_vnode_master).
  
+riak_core_vnode_master:command/4
+================================
+
 ``riak_core_vnode_master:command``::
 
  %% Send the command to the preflist given with responses going to Sender
- command([], _Msg, _Sender, _VMaster) ->
-     ok;
  command([{Index, Pid}|Rest], Msg, Sender, VMaster) when is_pid(Pid) ->
      gen_fsm:send_event(Pid, make_request(Msg, Sender, Index)),
      command(Rest, Msg, Sender, VMaster);
- command([{Index,Node}|Rest], Msg, Sender, VMaster) ->
-     proxy_cast({VMaster, Node}, make_request(Msg, Sender, Index)),
-     command(Rest, Msg, Sender, VMaster);
+
+- riak_core_vnode_master:command側で、Preflist2からheadして投げる先のremoteを判断している
+- command内でPreflist2に対してリクエストを飛ばすループを回している
+- send_eventで呼び出すPidはriak_core_vnode。
+- riak_core_vnodeはactiveになってるはずなので、riak_core_vnode:active(?VNODE_REQ{},State)にマッチする。
+
+  - ?VNODE_REQは#riak_vnode_req_v1
+  - make_requestは#riak_vnode_req_v1を返す
+
+riak_core_vnoder:active/2
+================================
+
+``riak_core_vnode:active/2``::
+
+ active(?VNODE_REQ{sender=Sender, request=Request},
+        State=#state{handoff_node=HN}) when HN =:= none ->
+     vnode_command(Sender, Request, State);
+ active(?VNODE_REQ{sender=Sender, request=Request},State) ->
+     vnode_handoff_command(Sender, Request, State);
+
+``riak_core_vnode:vnode_command/3``::
+
+ vnode_command(Sender, Request, State=#state{index=Index,
+                                             mod=Mod,
+                                             modstate=ModState,
+                                             forward=Forward,
+                                             pool_pid=Pool}) ->
+     %% Check if we should forward
+     case Forward of
+         undefined ->
+             Action = Mod:handle_command(Request, Sender, ModState);
+         NextOwner ->
+             lager:debug("Forwarding ~p -> ~p: ~p~n", [node(), NextOwner, Index]),
+             riak_core_vnode_master:command({Index, NextOwner}, Request, Sender,
+                                            riak_core_vnode_master:reg_name(Mod)),
+             Action = continue
+     end,
+         ~~~~~~~~~~~~~~~~
+     end.
+
+- Modはriak_kv_vnodeなので、riak_kv_vnode:handle_command/3が呼び出される
+
+riak_kv_vnode:handle_command/3
+==============================
+
+多分、?KV_PUT_REQにマッチするはず。
+
+``riak_kv_vnode:handle_command/3``::
+
+ handle_command(?KV_PUT_REQ{bkey=BKey,
+                            object=Object,
+                            req_id=ReqId,
+                            start_time=StartTime,
+                            options=Options},
+                Sender, State=#state{idx=Idx}) ->
+     StartTS = os:timestamp(),
+
+     %% 一度、replyをwとして返してしまう
+     riak_core_vnode:reply(Sender, {w, Idx, ReqId}),
+
+     UpdState = do_put(Sender, BKey,  Object, ReqId, StartTime, Options, State),
+     update_vnode_stats(vnode_put, Idx, StartTS),
+     {noreply, UpdState};
+
+- riak_core_vnodeに対して、書き込みリクエストは受け取ったぜ(ｷﾘｯ と、Wをreplyする。
+
+  - replyによって、putcore中のw値が++される
+  - でも、リクエスト受け取っただけでまだ書き込んだわけではない
+  - 実際の書き込みはdo_put内で
+
+``riak_kv_vnode:do_put/7``::
+
+ %% @private
+ %% upon receipt of a client-initiated put
+ do_put(Sender, {Bucket,_Key}=BKey, RObj, ReqID, StartTime, Options, State) ->
+     ~~~~~~~~~~~~~~~~
+     Coord = proplists:get_value(coord, Options, false),
+     PutArgs = #putargs{returnbody=proplists:get_value(returnbody,Options,false) orelse Coord,
+                        coord=Coord,
+                        lww=proplists:get_value(last_write_wins, BProps, false),
+                        bkey=BKey,
+                        robj=RObj,
+                        reqid=ReqID,
+                        bprops=BProps,
+                        starttime=StartTime,
+                        prunetime=PruneTime},
+     {PrepPutRes, UpdPutArgs} = prepare_put(State, PutArgs),
+     {Reply, UpdState} = perform_put(PrepPutRes, State, UpdPutArgs),
+
+     %% riak_core_vnodeに、dwをお知らせ
+     riak_core_vnode:reply(Sender, Reply),
+ 
+     update_index_write_stats(UpdPutArgs#putargs.is_index, UpdPutArgs#putargs.index_specs),
+     UpdState.
+
+``riak_kv_vnode:perform_put/3``::
+
+ perform_put({true, Obj},
+             #state{idx=Idx,
+                    mod=Mod,
+                    modstate=ModState}=State,
+             #putargs{returnbody=RB,
+                      bkey={Bucket, Key},
+                      reqid=ReqID,
+                      index_specs=IndexSpecs}) ->
+     Val = term_to_binary(Obj),
+     case Mod:put(Bucket, Key, IndexSpecs, Val, ModState) of
+         {ok, UpdModState} ->
+             update_hashtree(Bucket, Key, Val, State),
+             case RB of
+                 true ->
+                     Reply = {dw, Idx, Obj, ReqID};
+                 false ->
+                     Reply = {dw, Idx, ReqID}
+             end;
+         {error, _Reason, UpdModState} ->
+             Reply = {fail, Idx, ReqID}
+     end,
+     {Reply, State#state{modstate=UpdModState}}.
+
+- Modは、initで設定した`Mod = app_helper:gen_env(riak_kv, storage_backend)`が入る。
+- ここでは、`riak_kv_bitcask_backend`を見る。
+
+riak_kv_bitcask_backend:put/5
+=============================
+
+``riak_kv_bitcask_backend:put/5``::
+
+ %% @doc Insert an object into the bitcask backend.
+ -type index_spec() :: {add, Index, SecondaryKey} | {remove, Index, SecondaryKey}.
+ -spec put(riak_object:bucket(), riak_object:key(), [index_spec()], binary(), state()) ->
+                  {ok, state()} |
+                  {error, term(), state()}.
+ put(Bucket, PrimaryKey, _IndexSpecs, Val, #state{ref=Ref}=State) ->
+     BitcaskKey = term_to_binary({Bucket, PrimaryKey}),
+     case bitcask:put(Ref, BitcaskKey, Val) of
+         ok ->
+             {ok, State};
+         {error, Reason} ->
+             {error, Reason, State}
+     end.
+
+``bitcask:put/3``::
+
+ %% @doc Store a key and value in a bitcase datastore.
+ -spec put(reference(), Key::binary(), Value::binary()) -> ok.
+ put(Ref, Key, Value) ->
+     #bc_state { write_file = WriteFile } = State = get_state(Ref),
+ 
+     %% Make sure we have a file open to write
+     case WriteFile of
+         undefined ->
+             throw({error, read_only});
+ 
+         _ ->
+             ok
+     end,
+ 
+     {Ret, State1} = do_put(Key, Value, State, ?DIABOLIC_BIG_INT, undefined),
+     put_state(Ref, State1),
+     Ret.
+
+bitcask:do_put/5
+=================
+
+``bitcask:do_put/5``::
+
+ %% Internal put - have validated that the file is opened for write
+ %% and looked up the state at this point
+ do_put(_Key, _Value, State, 0, LastErr) ->
+     {{error, LastErr}, State};
+ do_put(Key, Value, #bc_state{write_file = WriteFile} = State, Retries, _LastErr) ->
+
+         ~~~~~~~~~~~~~~~~
+
+     case bitcask_nifs:keydir_put(State2#bc_state.keydir, Key,
+                                  bitcask_fileops:file_tstamp(WriteFile2),
+                                  Size, Offset, Tstamp, true) of
+         ok ->
+             {ok, State2#bc_state { write_file = WriteFile2 }};
+         already_exists ->
+             ~~~~~~~~~~~~
+     end.
+
+``bitcask_nifs:keydir_put/9``::
+
+ keydir_put(Ref, Key, FileId, TotalSz, Offset, Tstamp, NewestPutB,
+            OldFileId, OldOffset) ->
+     keydir_put_int(Ref, Key, FileId, TotalSz, <<Offset:64/unsigned-native>>,
+                    Tstamp, if not NewestPutB -> 0;
+                               true           -> 1
+                            end,
+                    OldFileId, <<OldOffset:64/unsigned-native>>).
+ 
+ keydir_put_int(_Ref, _Key, _FileId, _TotalSz, _Offset, _Tstamp, _NewestPutI,
+                _OldFileId, _OldOffset) ->
+     erlang:nif_error({error, not_loaded}).
+
+- 書き込み処理がどこにもないように見える...
+- 裏側でCのプロセスをコールしている
+- -on_load()でCとの紐付けがなされる
+
+``bitcask_nifs:init/0``::
+
+ init() ->
+     case code:priv_dir(bitcask) of
+         {error, bad_name} ->
+             case code:which(?MODULE) of
+                 Filename when is_list(Filename) ->
+                     SoName = filename:join([filename:dirname(Filename),"../priv", "bitcask"]);
+                 _ ->
+                     SoName = filename:join("../priv", "bitcask")
+             end;
+          Dir ->
+ 			SoName = filename:join(Dir, "bitcask")
+     end,
+     erlang:load_nif(SoName, 0).
+
+- filenameを.soと紐付けている
+
+``c_src/bitcask_nifs.c``::
+
+ ERL_NIF_INIT(bitcask_nifs, nif_funcs, &on_load, NULL, NULL, NULL);
+
+- 1951行目で紐付け
 
 参考
 ====
