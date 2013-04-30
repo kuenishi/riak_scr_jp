@@ -21,6 +21,11 @@ Riak Source Code Reading @Tokyo #8, #9
 - Erlang : newbie
 - ホップ++なビールが好き（ex: `インドの青鬼 <http://item.rakuten.co.jp/yonayona/854056/#854056>`_ ）
 
+注（追記）
+----------
+
+redbugでコールスタックを取った様子は、#9/w_dw_pw.rstに記載しました。
+
 w, dw, pw?
 ==========
 
