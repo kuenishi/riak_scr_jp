@@ -56,8 +56,22 @@ riak起動済みとして、
   
   > redbug:start(10000, 10, {riak_client, put, [return, stack]}).
   ok
+
+別ターミナルから、putしてみる
+
+::
+
+  $ curl -X PUT -i 'http://localhost:10018/buckets/accounts/keys/alice' -H 'Content-Type: application/json' -d '{name: "alice", age: 24}'
+ 
+
+::
+
   quitting: timeout
-  
+ 
+なんかうまくいかない。
+
+::
+
   > redbug:start(10000, 10, {erlang, now, [return, stack]}).
   ok
   ~~~~~
@@ -71,3 +85,5 @@ riak起動済みとして、
   quitting: msg_count
   > 
 
+erlang:now()は引っ掛けられていることを確認したので、文法的な問題ではなさそう。
+なぜ？？？
