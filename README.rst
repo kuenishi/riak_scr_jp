@@ -21,7 +21,6 @@ Open Questions - 発表のためのネタ
 
 ソースコードレベルでの解説が基本(なにか気になったら随時Pull Requestください)
 
-- 起動シーケンス
 - リリースパッケージなど
 - テスト
 - get, put 性能のオーダーとか勘所
@@ -31,7 +30,9 @@ Open Questions - 発表のためのネタ
 - sext
 - lager, dtrace
 - riak_api / erlang_protobuffs, mochiweb, poolboy, erlydtl, webmachineなど
-
+- yokozuna 入門
+- riak_core 再入門
+- riak_pipe 再入門
 
 開催の趣旨というかゴール
 ------------------------------
@@ -65,12 +66,19 @@ Open Questions - 発表のためのネタ
 Logs
 ====
 
+#11 2013/5/21
+-------------
+
+- vector clocks 入門 -> 使用例 -> CRDT by @shino
+- 起動シーケンス by @takabow
+
 #10 2013/5/7
 ------------
 
 - `Connpass page <http://connpass.com/event/2309/>`_
 - riak_pipe 入門 by @mille-printemps
 - ets 入門 via folsom by @kuenishi
+- @takabow 皆勤賞 -> 白Tゲット！！
 
 #9 2013/4/23
 ------------
