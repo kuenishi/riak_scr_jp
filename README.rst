@@ -69,6 +69,7 @@ Logs
 #11 2013/5/21
 -------------
 
+- `Connpass page <http://connpass.com/event/2423/>`_
 - vector clocks 入門 -> 使用例 -> CRDT by @shino
 - 起動シーケンス by @takabow
 
