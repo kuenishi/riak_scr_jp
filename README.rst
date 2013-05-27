@@ -66,6 +66,13 @@ Open Questions - 発表のためのネタ
 Logs
 ====
 
+#12 2013/6/4
+------------
+
+- `Connpass page <http://connpass.com/event/2520/>`_
+- Webmachine streaming まわり @KOBA789
+- QuickCheck でなにか @taketon_
+
 #11 2013/5/21
 -------------
 
