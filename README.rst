@@ -66,12 +66,20 @@ Open Questions - 発表のためのネタ
 Logs
 ====
 
+#13 2013/6/25
+-------------
+
+- Connpass page
+- Yokozuna 入門 by @ksauzz
+- QuickCheck でなにか @taketon_ (or riak_core by itawasa)
+
+
 #12 2013/6/4
 ------------
 
 - `Connpass page <http://connpass.com/event/2520/>`_
 - Webmachine streaming まわり @KOBA789
-- QuickCheck でなにか @taketon_
+- QuickCheck でなにか @taketon_ -> 延期
 
 #11 2013/5/21
 -------------
