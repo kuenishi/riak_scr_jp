@@ -1,0 +1,34 @@
+// Render using Graphviz:
+//      dot -Tpng -oriak_pipe_inputs.png riak_pipe_inputs.dot
+
+digraph {
+
+    subgraph top {
+        rank=same;
+        client
+        riak_pipe_vnode_worker
+
+        riak_pipe_vnode_worker -> riak_pipe_vnode_worker [color="red" label="(6)event"]
+    }
+
+    subgraph middle {
+        riak_pipe_vnode
+
+        client -> riak_pipe_vnode [color="blue" label="(1)queue_work/3"]
+        riak_pipe_vnode_worker -> riak_pipe_vnode [color="red" label="(1)next_input/2"]
+        riak_pipe_vnode -> riak_pipe_vnode_worker [color="red" label="(5)send_input/2"]
+    }
+
+    subgraph bottom {
+        riak_core_vnode
+
+        riak_pipe_vnode -> riak_core_vnode [color="blue" label="(2)send_command/2"]
+        riak_core_vnode -> riak_pipe_vnode [color="blue" label="(4)enqueue_internal/3"]        
+        riak_pipe_vnode -> riak_core_vnode [color="red" label="(2)send_command/2"]
+        riak_core_vnode -> riak_pipe_vnode [color="red" label="(4)next_input_internal/2"]        
+        
+        riak_core_vnode -> riak_core_vnode [color="blue" label="(3)send_event/2"]
+        riak_core_vnode -> riak_core_vnode [color="red" label="(3)send_event/2"]
+    }
+
+}
