@@ -415,7 +415,7 @@ riak_pipe_fitting:init/1
   
     - 一方向の監視。
 
-.. image:: https://raw.github.com/kuenishi/riak_scr_jp/master/%2310/riak_pipe_inputs.png
+.. image:: https://raw.github.com/kuenishi/riak_scr_jp/master/%2310/riak_pipe_monitors.png
             
 データの送信
 ----------
