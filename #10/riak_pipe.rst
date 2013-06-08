@@ -415,8 +415,7 @@ riak_pipe_fitting:init/1
   
     - 一方向の監視。
 
-.. image:: ./riak_pipe_monitors.png
-
+.. image:: https://raw.github.com/kuenishi/riak_scr_jp/master/%2310/riak_pipe_inputs.png
             
 データの送信
 ----------
@@ -854,9 +853,7 @@ riak_pipe_vnode:add_input/5
 - riak_pipe_vnode を経由して riak_core_vnode にコマンドが送信される
 - riak_core_vnode は自分自身にイベントを発行して処理を継続する
 
-.. image:: ./riak_pipe_inputs.png  
-
-        
+.. image:: https://raw.github.com/kuenishi/riak_scr_jp/master/%2310/riak_pipe_inputs.png
 
 riak_pipe_vnode_worker:initial_input_request/2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
