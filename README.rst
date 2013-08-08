@@ -30,7 +30,7 @@ Open Questions - 発表のためのネタ
 - riak_api / erlang_protobuffs, mochiweb, poolboy, erlydtl, webmachineなど
 - riak_core 再入門
 - riak_pipe 再入門
-- 永続化まわりをちゃんと下まで(bitcask, leveldb)
+- 永続化まわりをちゃんと下まで([bitcask](http://downloads.basho.com/papers/bitcask-intro.pdf), leveldb)
 - 障害時の動き(handoff やっているときの R/W/PR/PW, covering op),
 - handoff の中身 (どのデータがどの vnode に返すものか分かるのはなぜ?)
 
