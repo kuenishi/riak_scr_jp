@@ -21,15 +21,14 @@ Open Questions - 発表のためのネタ
 
 ソースコードレベルでの解説が基本(なにか気になったら随時Pull Requestください)
 
-- リリースパッケージ, テスト
-- get, put 性能のオーダーとか勘所
-- それぞれのAPIのレビュー
-- leveldbのindex書き込みはアトミックか？
-- 遅いなと思ったときの解析とかチューニング (reserved for @itawasa)
-- sext, node_package, lager, dtrace
-- riak_api / erlang_protobuffs, mochiweb, poolboy, erlydtl, webmachineなど
-- riak_core 再入門
-- riak_pipe 再入門
+- 2.0新機能
+
+ - Yokozuna, Bucket Types, Custer Metadata, CRDT, cuttlefish, Ring Resize
+ - Pagenated 2i
+
+- EQC pulse testing
+- node_package
+- riak_core, riak_pipe 再入門
 - 永続化まわりをちゃんと下まで([bitcask](http://downloads.basho.com/papers/bitcask-intro.pdf), leveldb)
 - 障害時の動き(handoff やっているときの R/W/PR/PW, covering op),
 - handoff の中身 (どのデータがどの vnode に返すものか分かるのはなぜ?)
@@ -37,9 +36,9 @@ Open Questions - 発表のためのネタ
 開催の趣旨というかゴール
 ------------------------------
 
-- riak_coreはフレームワークなので、それを使って何か作ってもらいたい
 - Riakを使ったアプリの設計のポイント、運用や設定のノウハウを知りたい
 - 特に障害時の動作
+
 
 基礎知識
 ------------
@@ -54,11 +53,8 @@ Open Questions - 発表のためのネタ
 
 - キーワード
 
- - DHT/Chord, Replication, Quorum, Vector Clock
- - Bloom filter
+ - DHT/Chord, Replication, Quorum, Vector Clock, Bloom filter
  - LevelDBとかLSM-tree
- - REST API - mochiweb, webmachineなど
- - Distributed Erlang
 
 - Riakドキュメント `オリジナル (英語) <http://docs.basho.com/riak/latest/>`_ / `日本語訳 <http://docs.basho.co.jp/riak/latest/>`_
 
