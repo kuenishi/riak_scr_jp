@@ -6,11 +6,11 @@ Riak Source Code Reading @Tokyo
 - 一回あたりの基本方針
 
  - 隔週、19時スタート、できれば火曜日
- - 入門・中級レベルと、ガチのソースコード解説を1セッションずつ
  - Open Questionsから発表できそうな問題を調べてきて発表
  - 特に資料とかは不要 (ホワイトボードあり)
  - 発表した人にはマグカップまたはビアグラスをプレゼント（したい）
  - ビールはひとり2本まで
+ - 参加者が10人を超えると立ち見になります、あしからず
 
 - 皆勤賞の人にはTシャツをプレゼント（したい）
 - 何か発表したい人、運営に意見あるひとはPull Requestでどうぞ
@@ -21,13 +21,17 @@ Open Questions - 発表のためのネタ
 
 ソースコードレベルでの解説が基本(なにか気になったら随時Pull Requestください)
 
-- 2.0新機能
+- Yokozuna
+- Bucket Types / Custer Metadata
+- CRDT
+- cuttlefish
+- Strong Consistency
+- Security
 
- - Yokozuna, Bucket Types, Custer Metadata, CRDT, cuttlefish, Ring Resize
- - Pagenated 2i
+- Ring Resize
+- Pagenated 2i
 
-- EQC pulse testing
-- node_package
+- node_package, leveldb
 - riak_core, riak_pipe 再入門
 - 永続化まわりをちゃんと下まで([bitcask](http://downloads.basho.com/papers/bitcask-intro.pdf), leveldb)
 - 障害時の動き(handoff やっているときの R/W/PR/PW, covering op),
@@ -46,10 +50,8 @@ Open Questions - 発表のためのネタ
 - `Dynamo <http://www.allthingsdistributed.com/2007/10/amazons_dynamo.html>`_ `和訳 <https://gist.github.com/2657692>`_
 - Erlang/OTP全般
 
+ - `erlang-users.jp <http://erlang-users.jp>`_
  - `なぜErlangなのか <http://ymotongpoo.hatenablog.com/entry/20110322/1300776826>`_
- - `プログラミングErlang <http://www.amazon.co.jp/dp/4274067149>`_
- - `Learn You Some Erlang <http://learnyousomeerlang.com>`_
- - `Learn You Some Erlang 日本語訳 <http://www.ymotongpoo.com/works/lyse-ja/>`_ by ymotongpoo
 
 - キーワード
 
@@ -58,14 +60,11 @@ Open Questions - 発表のためのネタ
 
 - Riakドキュメント `オリジナル (英語) <http://docs.basho.com/riak/latest/>`_ / `日本語訳 <http://docs.basho.co.jp/riak/latest/>`_
 
-Logs
-====
+Logs (Part 2: 2013/11 -)
+------------------------
 
-#13 Maybe September?
--------------------------
+#13 2013/11/13
+==============
 
-- Connpass page
-- Yokozuna 入門 by @ksauzz
-- QuickCheck でなにか @taketon_ (or riak_core by itawasa)
-
-- first 2013/6/25 - but postponed
+- Yokozuna 徹底解説 by @ksauzz
+- Riak 2.0 のなにか（仮） by @shino
