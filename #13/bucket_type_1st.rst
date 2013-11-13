@@ -2,6 +2,9 @@
 Bucket Type, Cluster Metadata
 =============================
 
+- riak: 2.0-pre5, commit=3bd9938
+- riak_core: commit=19aeaba
+
 概要
 ====
 
@@ -29,14 +32,14 @@ Bucket Type, Cluster Metadata
   - inactive 状態で作られる
   - inactive での作成が全ノードに行き渡ったら activate できる
   - activate が行き渡ったら type を使うことが出来る
-- すべての操作は riak_core_claimant を通じてシリアライズされる
-- ただし読み込み(get/1)以外
+- すべての更新操作は riak_core_claimant を通じてシリアライズされる
+- 読み込み(get/1)はだれでもできる。
 
 
 コード Bucket Type create から
 ==============================
 
-riak_core/src/riak_core_bucket_type.erl
+`riak_core/src/riak_core_bucket_type.erl`
 
 ::
 
@@ -52,6 +55,10 @@ riak_core/src/riak_core_bucket_type.erl
    %% クラスタ内の claimant に投げる
    riak_core_claimant:create_bucket_type(BucketType, Props) ->
        gen_server:call(claimant(), {create_bucket_type, BucketType, Props}, infinity).
+
+`riak_core/src/riak_core_claimant.erl`
+
+::
 
    riak_core_claimant:claimant() ->
        {ok, Ring} = riak_core_ring_manager:get_my_ring(),
@@ -77,6 +84,8 @@ riak_core/src/riak_core_bucket_type.erl
    riak_core_bucket_props:validate(CreateOrUpdate, Bucket, ExistingProps, BucketProps)
        プロパティのチェック
 
+バリデータ、実際に登録されているものをみてみる
+
 ::
 
    > application:get_env(riak_core, bucket_validators).
@@ -85,7 +94,7 @@ riak_core/src/riak_core_bucket_type.erl
 コード: Cluster Metadata (を少しだけ)
 =====================================
 
-riak_core/include/riak_core_metadata.hrl
+`riak_core/include/riak_core_metadata.hrl`
 
 いろいろ意味深
 
@@ -100,7 +109,7 @@ riak_core/include/riak_core_metadata.hrl
             }).
    -type metadata_broadcast()  ::  #metadata_broadcast{}.
 
-riak_core/src/riak_core_metadata.erl
+`riak_core/src/riak_core_metadata.erl`
 
 ::
 
@@ -117,7 +126,9 @@ riak_core/src/riak_core_metadata.erl
                maybe_tombstone(maybe_resolve(PKey, Existing, ResolveMethod), Default)
        end.
 
-   riak_core/src/riak_core_metadata_manager.erl
+`riak_core/src/riak_core_metadata_manager.erl`
+
+::
 
    %% データは ETS と Dets で持つ
    %% metadata_manager_prefixes_ets:
@@ -164,3 +175,9 @@ riak_core/src/riak_core_metadata.erl
        %% Dets 更新
        ok = dets_insert(dets_tabname(FullPrefix), Objs),
        {Metadata, State}.
+
+その他、見たコード
+==================
+
+- claimant の選ばれ方
+- hashtree exchange の入口、ロックとか
