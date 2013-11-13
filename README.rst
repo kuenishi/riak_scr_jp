@@ -72,4 +72,4 @@ Logs (Part 2: 2013/11 -)
 ==============
 
 - Yokozuna 徹底解説 by @ksauzz
-- Riak 2.0 のなにか（仮） by @shino
+- Bucket Types と Cluster Metadata のさわり by @shino
