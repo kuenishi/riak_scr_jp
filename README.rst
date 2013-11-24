@@ -24,7 +24,6 @@ Open Questions - 発表のためのネタ
 - Yokozuna
 - Bucket Types
 - Custer Metadata
-- CRDT
 - cuttlefish
 - Strong Consistency
 - Security
