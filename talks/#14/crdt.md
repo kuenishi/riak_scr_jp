@@ -171,6 +171,8 @@ $ riak-admin types ...
 
 かなり奥底の方まで組み込まれているようで、仲間で入らないとコードは追えない系
 
+HTTPは [riak_kv/#732](https://github.com/basho/riak_kv/pull/732) のブランチじゃないとまだ動かない。
+
 `riak_kv_web.erl`
 
 ```erlang
@@ -187,7 +189,9 @@ $ riak-admin types ...
         ] ++
 ```
 
-=> bucket type から CRDT を叩いてみる
+## sets
+
+bucket type から CRDT を叩いてみる
 
 ```sh
 $ riak-admin bucket-type list
@@ -205,7 +209,8 @@ $ curl http://localhost:10018/types/stests/buckets/s/datatypes/k
 $ curl -X POST http://localhost:10018/types/stests/buckets/s/datatypes/k -H 'content-type: application/json' -d '{"remove":"foobar"}'
 ```
 
-Counters
+## Counters
+
 ```sh
 $ riak-admin bucket-type create ctests '{"props":{"datatype":"counter"}}'
 stests created
