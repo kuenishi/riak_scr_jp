@@ -67,6 +67,12 @@ Open Questions - 発表のためのネタ
 Logs (Part 2: 2013/11 -)
 ------------------------
 
+#17 2014/01/29
+==============
+
+- Ownership Handoff @takabow
+- Plumtree @r_rudi
+
 #16 2014/01/15
 ==============
 
