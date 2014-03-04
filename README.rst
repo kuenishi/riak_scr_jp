@@ -67,6 +67,12 @@ Open Questions - 発表のためのネタ
 Logs (Part 2: 2013/11 -)
 ------------------------
 
+#19 2014/03/18
+==============
+
+- dbg, redbug and more @slfritchie
+- something about riak_core_ring, state/update/... by @shino
+
 #18 2014/03/03
 ==============
 
@@ -77,6 +83,9 @@ Logs (Part 2: 2013/11 -)
 
 - Ownership Handoff @takabow
 - Plumtree @r_rudi
+
+  `Riak 2.0のPlumtreeを読む <http://tdoc.info/blog/2014/01/10/riak_plumtree.html>`_
+  `riakのhandoffについて調べたこと <http://tdoc.info/blog/2014/02/20/riak_handoff.html>`_
 
 #16 2014/01/15
 ==============
