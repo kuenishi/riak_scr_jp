@@ -67,11 +67,18 @@ Open Questions - 発表のためのネタ
 Logs (Part 2: 2013/11 -)
 ------------------------
 
+#20 2014/04/02
+==============
+
+- Something about MapReduce by @ksauzz
+- Something by Someone, maybe
+
 #19 2014/03/18
 ==============
 
-- dbg, redbug and more @slfritchie
-- something about riak_core_ring, state/update/... by @shino
+- dbg, redbug and more by @slfritchie
+  - https://gist.github.com/slfritchie/9616500
+- riak_core ring 2/N, raw ring and tainted ring by @shino
 
 #18 2014/03/03
 ==============
