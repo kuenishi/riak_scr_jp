@@ -67,6 +67,12 @@ Open Questions - 発表のためのネタ
 Logs (Part 2: 2013/11 -)
 ------------------------
 
+#21 2014/04/21
+==============
+
+- Something about Softlayer by @maho_da
+- Something about riak_core by @itawasa
+
 #20 2014/04/02
 ==============
 
