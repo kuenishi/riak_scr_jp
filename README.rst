@@ -70,7 +70,7 @@ Logs (Part 2: 2013/11 -)
 #22 2014/05/15
 ==============
 
-- SC or Ring resize by @kuenishi
+- SC or Ring resize by @kuenishi => talks/#22/sc.md
 
 #21 2014/04/21
 ==============
