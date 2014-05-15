@@ -149,3 +149,14 @@ riak_ensemble_sup -(r41)-+- riak_ensemble_router_sup-(141)-riak_ensemble_router
 ```
 
 `r41`: `rest_for_one`
+
+
+## Q
+
+- membership change / ring update のときの挙動
+- peer is fsm ; プロセスがどれくらいブロックするか？ kv_put/get を
+ - peer でやると、ブロックが長いので遅いのでは
+ - workerでやるとするとconsistency が心配
+- leader peerがwriteを投げた直後に死んだら？
+ - 古いデータが残ってない場合にどうやって戻すか
+ - peerは履歴を持っているか
