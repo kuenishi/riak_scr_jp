@@ -108,6 +108,9 @@ run_(Pid, BTB, Count, Retry) ->
             run_(Pid, BTB, Count-1, Retry);
         {error, <<"failed">>} ->
             %% io:format("~p>>~p~n", [E, ?LINE]),
+            run_(Pid, BTB, Count, Retry+1);
+        E ->
+            io:format("~p>>~p~n", [E, ?LINE]),
             run_(Pid, BTB, Count, Retry+1)
     end.
 
