@@ -65,22 +65,54 @@ $ make stagedevrel
 strong_consistency = on
 ```
 
+or
+
+```
+> make stagedevrel
+...
+> for i in `seq 1 5`; do sed -e 's/## ring_size = 64/ring_size=8/' -i.back dev/dev$i/etc/riak.conf ; done
+> for i in `seq 1 5`; do sed -e 's/## strong_consistency = off/strong_consistency = on/' -i.back dev/dev$i/etc/riak.conf ; done
+```
+
 - per bucket type, `consistent = true`
 
 ```
-$ riak-admin bucket-type create s '{"props":{"consistent": true}}'
-s created
-$ riak-admin bucket-type activate s
+$ riak-admin bucket-type create sc '{"props":{"consistent": true}}'
+sc created
+$ riak-admin bucket-type activate sc
 $ riak attach
 1> riak_ensemble_manager:enabled().
 false
 2> riak_ensemble_manager:enable().
 ok
+3> riak_core_ring_manager:force_update().
+ok
 ```
 
 - あとは普通のPUT/GET ... って思うでしょ？ 中でのコンセンサスが立ち上がるまでは `{error, <<"timeout">>}` が返ってくる
-- 辛抱強く待つ
+- 辛抱強く待つ => [see riak_test](https://github.com/basho/riak_test/blob/master/tests/ensemble_util.erl#L26)
+- 30分くらいかかる？
 
+```erlang
+> riak_kv_ensembles:ensembles().
+[{kv,0,3},
+ {kv,22835963083295358096932575511191922182123945984,3},
+ {kv,45671926166590716193865151022383844364247891968,3},
+ {kv,68507889249886074290797726533575766546371837952,3},
+ ....
+ ]
+> riak_ensemble_manager:cluster().
+['dev1@127.0.0.1','dev2@127.0.0.1','dev3@127.0.0.1',
+ 'dev4@127.0.0.1','dev5@127.0.0.1']
+> riak_kv_ensembles:check_membership().
+[true,true,true,true,true,true,true,true,true,true,true,
+ true,true,true,true,true,true,true,true,true,true,true,true,
+ true,true,true,true,true,true|...]
+> length(lists:filter(fun(E) -> riak_ensemble_manager:check_quorum(E, 500) end, riak_kv_ensembles:ensembles())).
+20
+> [ riak_ensemble_manager:count_quorum(E, 500) || E <- riak_kv_ensembles:ensembles()].
+[0,0,0,0|...]
+```
 ## TODOs
 
 - AAE, 2i, stats > 2.0 final
