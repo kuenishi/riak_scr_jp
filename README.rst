@@ -25,7 +25,6 @@ Open Questions - 発表のためのネタ
 - Bucket Types
 - Custer Metadata
 - cuttlefish
-- Strong Consistency
 - Security
 - Mutator
 
@@ -47,7 +46,6 @@ Open Questions - 発表のためのネタ
 - Riakを使ったアプリの設計のポイント、運用や設定のノウハウを知りたい
 - 特に障害時の動作
 
-
 基礎知識
 ------------
 
@@ -66,6 +64,11 @@ Open Questions - 発表のためのネタ
 
 Logs (Part 2: 2013/11 -)
 ------------------------
+
+#24 2014/07/23
+==============
+
+- Strong Consistency (cont) by @kuenishi => talks/#24/sc-2.md
 
 #23 2014/05/27
 ==============
