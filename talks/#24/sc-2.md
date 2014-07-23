@@ -126,7 +126,7 @@ Refs: 2.0, <origin/2.0>, riak-2.0.0rc1-1-g802816e
 Author:     Luc Perkins <lucperkins@gmail.com>
 AuthorDate: Mon Jul 21 13:12:58 2014 -0700
 Commit:     Luc Perkins <lucperkins@gmail.com>
-CommitDate: Mon Jul 21 13:12:58 2014 -0700 
+CommitDate: Mon Jul 21 13:12:58 2014 -0700
 ```
 
 今日はブートシーケンスのようなもの
@@ -150,7 +150,7 @@ CommitDate: Mon Jul 21 13:12:58 2014 -0700
 
 - Activated State を `riak_ensemble_manager:maybe_save_state/1`
 
-  - new state を `riak_ensemble_storage:put/2` 
+  - new state を `riak_ensemble_storage:put/2`
 
 - `riak_ensemble_storage:sync/1`
 - `ets:insert(?ETS, RootInfo)`
@@ -180,3 +180,8 @@ CommitDate: Mon Jul 21 13:12:58 2014 -0700
  - `start_workers` : `riak_ensemble_peer_worker:start/1`
  - compute_members
  - `riak_ensemble_lease:start_link/0`
+
+
+# Q&A
+
+- あとから n_val=5 とかで consistent bucket-type をつくったらどうなる？ => 試してみたが、 ensemble-status ではよくわからなかった
