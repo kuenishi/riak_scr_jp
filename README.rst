@@ -22,23 +22,17 @@ Open Questions - 発表のためのネタ
 ソースコードレベルでの解説が基本(なにか気になったら随時Pull Requestください)
 
 - Yokozuna
-- Bucket Types
-- Custer Metadata
 - cuttlefish
-- Strong Consistency
 - Security
-- Mutator
 
 - Ring Resize
 - Pagenated 2i
 
 - node_package, leveldb
-- riak_core ring 管理
-- riak_core vnode 管理
+- riak_core ring / vnode 管理
 - riak_core, riak_pipe 再入門
 - 永続化まわりをちゃんと下まで([bitcask](http://downloads.basho.com/papers/bitcask-intro.pdf), leveldb)
 - 障害時の動き(handoff やっているときの R/W/PR/PW, covering op),
-- handoff の中身 (どのデータがどの vnode に返すものか分かるのはなぜ?)
 - claimant 自身を `riak-admin cluster down` するときにはどう整合性が保たれているのか
 
 開催の趣旨というかゴール
@@ -46,7 +40,6 @@ Open Questions - 発表のためのネタ
 
 - Riakを使ったアプリの設計のポイント、運用や設定のノウハウを知りたい
 - 特に障害時の動作
-
 
 基礎知識
 ------------
@@ -66,6 +59,16 @@ Open Questions - 発表のためのネタ
 
 Logs (Part 2: 2013/11 -)
 ------------------------
+
+#25 2014/08/xx
+==============
+
+- hinted handoff の中身 (どのデータがどの vnode に返すものか分かるのはなぜ?) by @takabow
+
+#24 2014/07/23
+==============
+
+- Strong Consistency (cont) by @kuenishi => talks/#24/sc-2.md
 
 #23 2014/05/27
 ==============

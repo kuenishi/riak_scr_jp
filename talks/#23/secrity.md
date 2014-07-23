@@ -8,7 +8,7 @@
   - PAM
   - Certificate authentication
 - Authorization
-- Encription (Client-Server)
+- Encryption (Client-Server)
 
 ## Source Codes
 
