@@ -9,7 +9,7 @@
 # References / Documentations
 
 - すごく簡単な使い方の説明: [Strong Consistency @ basho_docs](https://github.com/basho/basho_docs/blob/features/lp/strong-consistency/source/languages/en/riak/dev/advanced/strong-consistency.md)
-- [Release Note](https://github.com/basho/riak_ee/blob/release-note-ja-2.0rc1/RELEASE-NOTES.ja.md#strong-consistency)
+- [Release Note](https://github.com/basho/riak/blob/2.0/RELEASE-NOTES.ja.md#strong-consistency)
 - もうちょっと詳しい使い方や仕組みの説明: [User Docs @ riak_ensemble](https://github.com/basho/riak_ensemble/blob/wip/riak-2.0-user-docs/riak_consistent_user_docs.md)
 - くわしい設計の説明: [Design Doc @ riak_ensemble](https://github.com/basho/riak_ensemble/tree/feature/add-docs/doc)
 
