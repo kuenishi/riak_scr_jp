@@ -69,7 +69,7 @@ Logs (Part 2: 2013/11 -)
 ==============
 
 - Strong Consistency (cont) by @kuenishi => talks/#24/sc-2.md
-- `当日の様子 <https://www.flickr.com/photos/38134009@N00/>`_
+- `当日の様子 <https://www.flickr.com/photos/38134009@N00/14562736677/in/set-72157645530208069/>`_
 
 #23 2014/05/27
 ==============
