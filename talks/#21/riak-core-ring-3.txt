@@ -1,0 +1,203 @@
+-*- org -*-
+
+* Riak Core: Ring (3/N: N is unknown)
+
+- riak: commit =1f4d6c0= =riak-2.0.0beta1=
+- riak_core: commit =2168f35=
+
+* 概要
+
+- riak core ring の第3回
+
+何回かに渡り...
+
+- ノード join/leave, ノード障害時の挙動
+- ring metadata とは、どう伝播して、どう reconcile されるか
+- ownership handoff 中の coverage operation も関係してくるかな(?)
+
+今日の目標: gossip を読んでみようかと思う
+
+積み残し
+
+- reconcile_ring ですでに詰まった、次は動かさないとあかん
+- updates of data in raw ring: membership, capabilities
+- vclock of nodes (not of vnodes): 再起動、インクレメント、使い道
+
+* riak_core_gossip.erl
+
+- gen_server
+- raw ring 情報の送信 (=distribute_ring=, =send_ring_to=)
+- token 管理
+- TODO: =rejoin=
+- TODO: =random_gossip=, =recursive_gossip=, =random_recursive_gossip=
+
+* start_link/0, init/1
+
+#+begin_src erlang
+start_link() ->
+    %% モジュール名(riak_core_gossip)でローカルに登録
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+init(_State) ->
+    schedule_next_reset(),
+    {ok, Ring} = riak_core_ring_manager:get_raw_ring(),
+    {Tokens, _} = app_helper:get_env(riak_core, gossip_limit, ?DEFAULT_LIMIT),
+    State = update_known_versions(Ring,
+                                  #state{gossip_versions=orddict:new(),
+                                         gossip_tokens=Tokens}),
+    {ok, State}.
+
+%% Default gossip rate: allow at most 45 gossip messages every 10 seconds
+-define(DEFAULT_LIMIT, {45, 10000}).
+
+schedule_next_reset() ->
+    {_, Reset} = app_helper:get_env(riak_core, gossip_limit, ?DEFAULT_LIMIT),
+    erlang:send_after(Reset, ?MODULE, reset_tokens).
+#+end_src
+
+* send ring
+
+#+begin_src erlang
+%% send_ring/1 -
+%% Send the current node's ring to some other node.
+send_ring(ToNode) -> send_ring(node(), ToNode).
+
+%% token が切れているときにはなにもしない
+handle_cast({send_ring_to, _Node}, State=#state{gossip_tokens=0}) ->
+    %% Out of gossip tokens, ignore the send request
+    {noreply, State};
+handle_cast({send_ring_to, Node}, State) ->
+    %% raw ring をもってくる
+    {ok, MyRing0} = riak_core_ring_manager:get_raw_ring(),
+    MyRing = update_gossip_version(MyRing0),
+    GossipVsn = case gossip_version() of
+                    ?LEGACY_RING_VSN ->
+                        ?LEGACY_RING_VSN;
+                    _ ->
+                        rpc_gossip_version(MyRing, Node)
+                end,
+    RingOut = riak_core_ring:downgrade(GossipVsn, MyRing),
+    riak_core_ring:check_tainted(RingOut,
+                                 "Error: riak_core_gossip/send_ring_to :: "
+                                 "Sending tainted ring over gossip"),
+    %% 送りつけるノードの riak_core_gossip (gen_server) に
+    %% cast で投げつける
+    gen_server:cast({?MODULE, Node}, {reconcile_ring, RingOut}),
+    %% トークンを減らす
+    Tokens = State#state.gossip_tokens - 1,
+    {noreply, State#state{gossip_tokens=Tokens}};
+
+#+end_src
+
+=send_ring_to= から呼び出される =reconcile_ring=
+
+#+begin_src erlang
+
+handle_cast({reconcile_ring, RingIn}, State) ->
+    OtherRing = riak_core_ring:upgrade(RingIn),
+    State2 = update_known_versions(OtherRing, State),
+    case check_legacy_gossip(RingIn, State2) of
+        true ->
+            LegacyRing = riak_core_ring:downgrade(?LEGACY_RING_VSN, OtherRing),
+            riak_core_gossip_legacy:handle_cast({reconcile_ring, LegacyRing},
+                                                State2),
+            {noreply, State2};
+        false ->
+            %% Compare the two rings, see if there is anything that
+            %% must be done to make them equal...
+            riak_core_stat:update(gossip_received),
+            riak_core_ring_manager:ring_trans(fun reconcile/2, [OtherRing]),
+            {noreply, State2}
+    end;
+
+#+end_src
+
+=riak_core_gossip:reconcile/2= の前に
+=riak_core_ring_manger:ring_trans/2= をチラ見する。
+
+#+begin_src erlang
+ring_trans(Fun, Args) ->
+    gen_server:call(?MODULE, {ring_trans, Fun, Args}, infinity).
+
+handle_call({ring_trans, Fun, Args}, _From, State=#state{raw_ring=Ring}) ->
+    %% Ring は自分の #state から。
+    %% Fun の結果でいろいろ処理をしている。
+    case catch Fun(Ring, Args) of
+        {new_ring, NewRing} ->
+            %% prune_write_ring/2 を呼び出してから
+            %% riak_core_ring_events:ring_update/1 を叩く
+            State2 = prune_write_notify_ring(NewRing, State),
+            %% ...
+            riak_core_gossip:random_recursive_gossip(NewRing),
+            {reply, {ok, NewRing}, State2};
+        {set_only, NewRing} ->
+            State2 = prune_write_ring(NewRing, State),
+            {reply, {ok, NewRing}, State2};
+        {reconciled_ring, NewRing} ->
+            State2 = prune_write_notify_ring(NewRing, State),
+            riak_core_gossip:recursive_gossip(NewRing),
+            {reply, {ok, NewRing}, State2};
+        ignore ->
+            {reply, not_changed, State};
+        {ignore, Reason} ->
+            {reply, {not_changed, Reason}, State};
+        Other ->
+            lager:error("ring_trans: invalid return value: ~p",
+                                   [Other]),
+            {reply, not_changed, State}
+    end;
+
+#+end_src
+
+=riak_core_gossip:reconcile/2= にもどる
+
+#+begin_src erlang
+
+reconcile(Ring0, [OtherRing0]) ->
+    %% Due to rolling upgrades and legacy gossip, a ring's cluster name
+    %% may be temporarily undefined. This is eventually fixed by the claimant.
+    {Ring, OtherRing} = riak_core_ring:reconcile_names(Ring0, OtherRing0),
+    Node = node(),
+    OtherNode = riak_core_ring:owner_node(OtherRing),
+    Members = riak_core_ring:reconcile_members(Ring, OtherRing),
+    WrongCluster = (riak_core_ring:cluster_name(Ring) /=
+                    riak_core_ring:cluster_name(OtherRing)),
+    PreStatus = riak_core_ring:member_status(Members, OtherNode),
+    IgnoreGossip = (WrongCluster or
+                    (PreStatus =:= invalid) or
+                    (PreStatus =:= down)),
+    case IgnoreGossip of
+        true ->
+            Ring2 = Ring,
+            Changed = false;
+        false ->
+            {Changed, Ring2} =
+                riak_core_ring:reconcile(OtherRing, Ring)
+    end,
+    OtherStatus = riak_core_ring:member_status(Ring2, OtherNode),
+    case {WrongCluster, OtherStatus, Changed} of
+        {true, _, _} ->
+            %% TODO: Tell other node to stop gossiping to this node.
+            riak_core_stat:update(ignored_gossip),
+            ignore;
+        {_, down, _} ->
+            %% Tell other node to rejoin the cluster.
+            riak_core_gossip:rejoin(OtherNode, Ring2),
+            ignore;
+        {_, invalid, _} ->
+            %% Exiting/Removed node never saw shutdown cast, re-send.
+            ClusterName = riak_core_ring:cluster_name(Ring),
+            riak_core_ring_manager:refresh_ring(OtherNode, ClusterName),
+            ignore;
+        {_, _, new_ring} ->
+            Ring3 = riak_core_ring:ring_changed(Node, Ring2),
+            riak_core_stat:update(rings_reconciled),
+            log_membership_changes(Ring, Ring3),
+            {reconciled_ring, Ring3};
+        {_, _, _} ->
+            ignore
+    end.
+
+
+#+end_src
+
