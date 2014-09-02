@@ -1,0 +1,723 @@
+-*- org -*-
+
+Dotted Version Vector in Riak
+
+TODO (some day?)
+
+- なぜ false concurrency が解決できるようになるのか
+- riak_object, newobj と oldobj がひっくりかえっている? => Not an issue
+- fold_contents, newobj は空振り?
+- deeper understanding of fold_contents
+- =riak.conf= =buckets.default.dvv_enabled = true= does not work?
+- [TODO] How/Why dots works nice? (theoretically)
+
+Purpose
+
+- What happens if disable after once enabled DVV / and enable again?
+- Can use for default bucket type => OK, but partially
+- どの範囲の explosion が救済されるのか
+
+* References
+
+** Motivation / Background
+
+- Show that sibling explosion exists and is trivially easy to produce by russelldb · Pull Request #383 · basho/riak_test
+  https://github.com/basho/riak_test/pull/383
+- Suppress and/or warning for bloated manifests #(sibling), value size, #({uuid, manifest}) · Issue #882 · basho/riak_cs
+  https://github.com/basho/riak_cs/issues/882
+
+** Papars
+
+- "Dotted Version Vectors: Efficient Causality Tracking
+  for Distributed Key-Value Stores"
+  Nuno Preguiça, Carlos Baquero, Paulo Almeida, Victor Fonte and Ricardo Gonçalves. Brief Announcement: Efficient Causality Tracking in Distributed Storage Systems With Dotted Version Vectors. ACM PODC, pp. 335-336, 2012.
+
+- "Improving Logical Clocks in Riak with Dotted Version Vectors: A Case Study"
+  http://paginas.fe.up.pt/~prodei/dsie12/papers/paper_19.pdf
+
+- "Evaluating Dotted Version Vectors in Riak"
+  http://asc.di.fct.unl.pt/~nmp/pubs/inforum-2011-2.pdf
+
+** Basho doc & PRs
+
+- doc
+  http://docs.basho.com/riak/2.0.0/theory/concepts/dotted-version-vectors/
+
+- Add get dot and dot type for dvv style causality by russelldb · Pull Request #463 · basho/riak_core
+  https://github.com/basho/riak_core/pull/463
+- Use a DVV like approach to stop sibling explosion by russelldb · Pull Request #746 · basho/riak_kv
+  https://github.com/basho/riak_kv/pull/746
+
+** More
+
+- ricardobcl/Dotted-Version-Vectors
+  https://github.com/ricardobcl/Dotted-Version-Vectors
+
+- Version Vectors are not Vector Clocks | HASlab
+  http://haslab.wordpress.com/2011/07/08/version-vectors-are-not-vector-clocks/
+
+* source revision
+
+- riak: commit =149c5fa=
+- riak_core: commit =ffd5d8a1a811d5649675049fdb9e42d7a419f5be=
+- riak_kv: commit =fb63e7a812664ccac488c9abb36cbfc868a36339=
+
+* How VC works (recall, before jumping in DVV)
+
+** vclocks after PUTs and GETs
+
+#+begin_src text
+
+$ curl -X PUT -d `now` http://127.0.0.1:10018/buckets/b/keys/k
+
+$ curl -I http://127.0.0.1:10018/buckets/b/keys/k                                                                                    [~/work]
+HTTP/1.1 200 OK
+X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5rEylNyqPMuXBQA=
+[snip]
+
+#+end_src
+
+#+begin_src erlang
+> riak_kv_vnode:get({639406966332270026714112114313373821099470487552, node()},
+      {<<"b">>, <<"k">>}, reqid).
+
+> M = receive Msg -> Msg end.
+
+> Obj = element(2, element(2, element(2, M))).
+
+> riak_object:vclock(Obj).
+[{<<197,82,177,11,84,5,94,71>>,{1,63576857204}}]
+% [{vclock_node(), {counter, timestamp()}}]
+
+
+#+end_src
+
+$ curl -X PUT -H 'X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5rEylNyqPMuXBQA=' \
+    -d `now` http://127.0.0.1:10018/buckets/b/keys/k
+
+#+begin_src erlang
+> riak_kv_vnode:get({639406966332270026714112114313373821099470487552, node()},
+      {<<"b">>, <<"k">>}, reqid).
+
+> M = receive Msg -> Msg end.
+
+> Obj = element(2, element(2, element(2, M))).
+
+{r_object,<<"b">>,<<"k">>,
+          [{r_content,{dict,6,16,16,8,80,48,
+                            {[],[],[],[],[],[],[],[],[],[],[],[],[],[],...},
+                            {{[],[],
+                              [[<<"Links">>]],
+                              [],[],[],[],[],[],[],
+                              [[...]|...],
+                              [...],...}}},
+                      <<"20140902-152201">>}],
+          [{<<197,82,177,11,84,5,94,71>>,{2,63576858121}}],
+          {dict,1,16,16,8,80,48,
+                {[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],...},
+                {{[],[],[],[],[],[],[],[],[],[],[],[],[],...}}},
+          undefined}
+
+> riak_object:vclock(Obj).
+[{<<197,82,177,11,84,5,94,71>>,{2,63576858121}}]
+
+> riak_object:vclock_header(Obj).
+{"X-Riak-Vclock",
+ "a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5bEycN6rPMuXBQA="}
+
+#+end_src
+
+$ curl -I http://127.0.0.1:10018/buckets/b/keys/k                                                                        riak-2.0/. [git:2.0]
+HTTP/1.1 200 OK
+X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5bEycN6rPMuXBQA=
+Vary: Accept-Encoding
+Server: MochiWeb/1.1 WebMachine/1.10.5 (jokes are better explained)
+Link: </buckets/b>; rel="up"
+Last-Modified: Tue, 02 Sep 2014 06:22:01 GMT
+ETag: "1QcQPzrX3abHPPM6wpbO69"
+Date: Tue, 02 Sep 2014 06:30:04 GMT
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 15
+
+
+> riak_object:decode_vclock(base64:decode("a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5bEycN6rPMuXBQA=")).
+[{<<197,82,177,11,84,5,94,71>>,{2,63576858121}}]
+
+
+** increment するところ
+
+grep vclock:increment in riak_kv
+#+begin_src text
+
+## increment_vclock(Object=#r_object{bucket=B}, ClientId) ->
+./riak_kv/src/riak_object.erl:630:    NewClock = vclock:increment(ClientId, Object#r_object.vclock),
+## increment_vclock(Object=#r_object{bucket=B}, ClientId, Timestamp) ->
+./riak_kv/src/riak_object.erl:637:    NewClock = vclock:increment(ClientId, Timestamp, Object#r_object.vclock),
+## update(false, OldObject, NewObject, Actor, Timestamp) ->
+./riak_kv/src/riak_object.erl:791:            FrontierClock = vclock:increment(Actor, Timestamp, MergedClock),
+
+#+end_src
+
+new PUT
+
+redbug (allthethings)
+
+#+begin_src erlang
+(dev1@127.0.0.1)33> redbug:start("vclock:increment -> return;stack", [{print_depth, 100}, {max_msg_size, 10000000}, {print_msec, true}, {msgs, 100}]).
+{1644,2}
+
+15:44:39.986 <0.1203.0>({riak_core_vnode,init,1}) {vclock,increment,
+                                                   [<<197,82,177,11,84,5,94,71>>,
+                                                    63576859479,
+                                                    [{<<197,82,177,11,84,5,94,
+                                                        71>>,
+                                                      {2,63576859414}}]]}
+  proc_lib:init_p_do_apply/3
+  gen_fsm:handle_msg/7
+  riak_core_vnode:vnode_command/3
+  riak_kv_vnode:handle_command/3
+  riak_kv_vnode:do_put/7
+  riak_kv_vnode:prepare_put/3
+  riak_kv_vnode:put_merge/6
+
+15:44:39.986 <0.1203.0>({riak_core_vnode,init,1}) vclock:increment/3 -> [{<<197,82,
+                                                                            177,11,
+                                                                            84,5,94,
+                                                                            71>>,
+                                                                          {3,
+                                                                           63576859479}}]
+
+#+end_src
+
+Updating PUT with =X-Riak-Vclock= : same stack
+
+#+begin_src erlang
+15:46:14.486 <0.1203.0>({riak_core_vnode,init,1}) {vclock,increment,
+                                                   [<<197,82,177,11,84,5,94,71>>,
+                                                    63576859574,
+                                                    [{<<197,82,177,11,84,5,94,
+                                                        71>>,
+                                                      {4,63576859547}}]]}
+  proc_lib:init_p_do_apply/3
+  gen_fsm:handle_msg/7
+  riak_core_vnode:vnode_command/3
+  riak_kv_vnode:handle_command/3
+  riak_kv_vnode:do_put/7
+  riak_kv_vnode:prepare_put/3
+  riak_kv_vnode:put_merge/6
+
+15:46:14.486 <0.1203.0>({riak_core_vnode,init,1}) vclock:increment/3 -> [{<<197,82,
+                                                                            177,11,
+                                                                            84,5,94,
+                                                                            71>>,
+                                                                          {5,
+                                                                           63576859574}}]
+
+#+end_src
+
+riak_kv_vnode.erl => when coordinator
+
+#+begin_src erlang
+
+put_merge(true = _Coordinator, LWW, CurObj, UpdObj, VId, StartTime) ->
+    {newobj, riak_object:update(LWW, CurObj, UpdObj, VId, StartTime)}.
+
+#+end_src
+
+
+** Then, how/why explosion occurs
+
+#+begin_src text
+
+clientA:     get       put[A1,1] get                 put[A2,2]                   get
+clientB:         get                 put[B1]  get                 put[B2,3]
+vnode  :               [A1]          [A1,B1]         [A1,B1,A2]   [A1,B1,A2,B2]
+vclock :     1         2             3               4            5
+#+end_src
+
+
+Initial PUT
+#+begin_src text
+$ curl -X PUT -d `now` http://127.0.0.1:10018/buckets/b/keys/k
+$ curl -I http://127.0.0.1:10018/buckets/b/keys/k
+HTTP/1.1 200 OK
+X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5rEyOL+qPMuXBQA=
+[snip]
+
+> riak_object:decode_vclock(base64:decode("a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5rEyOL+qPMuXBQA=")).
+[{<<197,82,177,11,84,5,94,71>>,{1,63576861251}}]
+#+end_src
+
+PUT A1
+#+begin_src text
+$ curl -X PUT -H 'X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5rEyOL+qPMuXBQA=' \
+     -d `now` http://127.0.0.1:10018/buckets/b/keys/k
+
+$ curl -I http://127.0.0.1:10018/buckets/b/keys/k
+HTTP/1.1 200 OK
+X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5bEyNL+qPMuXBQA=
+
+> riak_object:decode_vclock(base64:decode("a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5bEyNL+qPMuXBQA=")).
+[{<<197,82,177,11,84,5,94,71>>,{2,63576861315}}]
+#+end_src
+
+PUT B1
+#+begin_src text
+$ curl -X PUT -H 'X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5rEyOL+qPMuXBQA=' \
+     -d `now` http://127.0.0.1:10018/buckets/b/keys/k
+
+$ curl -I http://127.0.0.1:10018/buckets/b/keys/k
+HTTP/1.1 300 Multiple Choices
+X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy57EynH5VeZYvCwA=
+
+> riak_object:decode_vclock(base64:decode("a85hYGBgzGDKBVIcR4M2coewxrlnMCUy57EynH5VeZYvCwA=")).
+[{<<197,82,177,11,84,5,94,71>>,{3,63576861387}}]
+#+end_src
+
+PUT A2
+
+#+begin_src text
+$ curl -X PUT -H 'X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5bEyNL+qPMuXBQA=' \
+     -d `now` http://127.0.0.1:10018/buckets/b/keys/k
+$ curl -i http://127.0.0.1:10018/buckets/b/keys/k
+HTTP/1.1 300 Multiple Choices
+X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCWy5LEyvH1deZYvCwA=
+[snip]
+
+Siblings:
+5OK524NS4pUUIcUw5V32f
+wszcxqb24pwEFtA1y6kDD
+3IslGUZ0nzaJ8Ol5l32EEq
+
+> riak_object:decode_vclock(base64:decode("a85hYGBgzGDKBVIcR4M2coewxrlnMCWy5LEyvH1deZYvCwA=")).
+[{<<197,82,177,11,84,5,94,71>>,{4,63576861677}}]
+#+end_src
+
+
+* Dots, example
+
+** By http
+
+#+begin_src shell-script
+$ curl -X PUT -d '{"props": {"dvv_enabled": true, "allow_mult": true}}' \
+      -H 'Content-Type: application/json' http://127.0.0.1:10018/buckets/d/props
+#+end_src
+
+#+begin_src shell-script
+$ curl -X PUT -d `now` http://127.0.0.1:10018/buckets/d/keys/k
+
+$ curl -I http://127.0.0.1:10018/buckets/d/keys/k
+HTTP/1.1 200 OK
+X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5rEybHtfeZYvCwA=
+#+end_src
+
+#+begin_src erlang
+> riak_object:decode_vclock(base64:decode("a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5rEybHtfeZYvCwA=")).
+[{<<197,82,177,11,84,5,94,71>>,{1,63576862646}}]
+#+end_src
+
+Where is a dot?
+
+#+begin_src erlang
+> {ok, C} = riak:local_client().
+> {ok, Obj} = C:get(<<"d">>, <<"k">>).
+> MD = riak_object:get_metadata(Obj).
+> dict:find(<<"dot">>, MD).
+{ok,{<<197,82,177,11,84,5,94,71>>,{1,63576862646}}}
+#+end_src
+
+
+#+begin_src shell-script
+
+## Initial value
+$ curl -X PUT -d `now` http://127.0.0.1:10018/buckets/d/keys/k
+$ curl -I http://127.0.0.1:10018/buckets/d/keys/k
+HTTP/1.1 200 OK
+X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5rEyyHyqPMuXBQA=
+
+## PUT A1
+$ curl -X PUT -H 'X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5rEyyHyqPMuXBQA=' \
+     -d `now` http://127.0.0.1:10018/buckets/d/keys/k
+$ curl -I http://127.0.0.1:10018/buckets/d/keys/k
+HTTP/1.1 200 OK
+X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5bEy2H+qPMuXBQA=
+
+## PUT B1
+$ curl -X PUT -H 'X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5rEyyHyqPMuXBQA=' \
+     -d `now` http://127.0.0.1:10018/buckets/d/keys/k
+$ curl -i http://127.0.0.1:10018/buckets/d/keys/k
+HTTP/1.1 300 Multiple Choices
+X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy57Ey5H6qPMuXBQA=
+[snip]
+
+Siblings:
+5KKm0jtTx4j4uAnjkbnB0x
+tOTjv0R9PteyH8QNBR2zL
+
+## PUT A2
+$ curl -X PUT -H 'X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCUy5bEy2H+qPMuXBQA=' \
+      -d `now` http://127.0.0.1:10018/buckets/d/keys/k
+
+$ curl -i http://127.0.0.1:10018/buckets/d/keys/k
+HTTP/1.1 300 Multiple Choices
+X-Riak-Vclock: a85hYGBgzGDKBVIcR4M2coewxrlnMCWy5LEyLPxUeZYvCwA=
+[snip]
+
+Siblings:
+tOTjv0R9PteyH8QNBR2zL
+65hGWSncgHSTuTGUHGGO0N
+
+#+end_src
+
+No Explosion Ｏ(≧▽≦)Ｏ
+
+
+** By local client
+
+#+begin_src erlang
+
+> Initial = riak_object:new(B, K, <<"value">>).
+{r_object,<<"d">>,<<"k">>,
+          [{r_content,{dict,0,16,16,8,80,48,
+                            {[],[],[],[],[],[],[],[],[],[],[],[],[],[],...},
+                            {{[],[],[],[],[],[],[],[],[],[],[],[],...}}},
+                      <<"value">>}],
+          [],
+          {dict,1,16,16,8,80,48,
+                {[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],...},
+                {{[],[],[],[],[],[],[],[],[],[],[],[],[],...}}},
+          undefined}
+> C:put(Initial).
+> {ok, Inited} = C:get(B, K).
+
+> Dot = fun(Obj) -> [dict:find(<<"dot">>, MD)
+                     || {MD, Value} <- riak_object:get_contents(Obj)] end.
+> Dot(Inited).
+[{ok,{<<197,82,177,11,84,5,94,71>>,{1,63576864484}}}]
+
+> A1pre = riak_object:update_value(Inited, "A1").
+> C:put(A1).
+> {ok, A1} = C:get(B,K).
+> Dot(A1).
+[{ok,{<<197,82,177,11,84,5,94,71>>,{2,63576864539}}}]
+
+> B1pre = riak_object:update_value(Inited, "B1").
+> C:put(B1).
+> {ok, B1} = C:get(B,K).
+> Dot(B1).
+[{ok,{<<197,82,177,11,84,5,94,71>>,{2,63576864539}}},
+ {ok,{<<197,82,177,11,84,5,94,71>>,{3,63576864610}}}]
+
+> A2pre = riak_object:update_value(A1, <<"A2">>).
+> {ok, A2} = C:get(B, K).
+> Dot(A2).
+[{ok,{<<197,82,177,11,84,5,94,71>>,{3,63576864610}}},
+ {ok,{<<197,82,177,11,84,5,94,71>>,{4,63576864687}}}]
+
+> B2pre = riak_object:update_value(B1, <<"B2">>).
+> C:put(B2pre).
+> {ok, B2} = C:get(B, K).
+> Dot(B2).
+[{ok,{<<197,82,177,11,84,5,94,71>>,{4,63576864687}}},
+ {ok,{<<197,82,177,11,84,5,94,71>>,{5,63576864750}}}]
+
+#+end_src
+
+
+* Finally, source code
+
+** riak_core
+
+vclock.erl exports
+
+- descends_dot/2
+- pure_dot/1
+- get_dot/2
+- valid_dot/1
+
+#+begin_src erlang
+%% @doc does the given `vclock()' descend (子孫である) from the given `dot()'. The
+%% `dot()' can be any vclock entry returned from
+%% `get_entry/2'. returns `true' if the `vclock()' has an entry for
+%% the `actor' in the `dot()', and that the counter for that entry is
+%% at least that of the given `dot()'. False otherwise. Call with a
+%% valid entry or you'll get an error.
+%%
+%% @see descends/2, get_entry/3, dominates/2
+-spec descends_dot(vclock(), dot()) -> boolean().
+descends_dot(Vclock, Dot) ->
+    descends(Vclock, [Dot]).
+
+% @doc Get the entry `dot()' for `vclock_node()' from `vclock()'.
+-spec get_dot(Node :: vclock_node(), VClock :: vclock()) -> {ok, dot()} | undefined.
+get_dot(Node, VClock) ->
+    case lists:keyfind(Node, 1, VClock) of
+        false -> undefined;
+        Entry -> {ok, Entry}
+    end.
+#+end_src
+
+** riak_kv
+
+riak_kv_vnode.erl
+
+#+begin_src erlang
+
+put_merge(true, LWW, CurObj, UpdObj, VId, StartTime) ->
+    {newobj, riak_object:update(LWW, CurObj, UpdObj, VId, StartTime)}.
+
+#+end_src
+
+riak_object.erl
+
+#+begin_src erlang
+
+%% Branch for LWW=false
+update(false, OldObject, NewObject, Actor, Timestamp) ->
+    %% Get the vclock we have for the local / old object
+    LocalVC = vclock(OldObject),
+    %% get the vclock from the new object
+    PutVC = vclock(NewObject),
+
+    %% Optimisation: if the new object's vclock descends from the old
+    %% object's vclock, then don't merge values, just increment the
+    %% clock and overwrite.
+    case vclock:descends(PutVC, LocalVC) of
+        true ->
+            increment_vclock(NewObject, Actor, Timestamp);
+        false ->
+            %% The new object is concurrent with some other value, so
+            %% merge the new object and the old object.
+
+            %%%% 最後に書き込むとき用の vclock を作成 (マージ+インクレメント)
+            MergedClock = vclock:merge([PutVC, LocalVC]),
+            FrontierClock = vclock:increment(Actor, Timestamp, MergedClock),
+
+            %%%% Dot は予定 vclock から作って NewObject に assign_dot/3
+            {ok, Dot} = vclock:get_dot(Actor, FrontierClock),
+            %% Assign an event to the new value
+            Bucket = bucket(OldObject),
+            %%%% この段階では NewObject / DottedPutObject の vclock は古いまま
+            DottedPutObject = assign_dot(NewObject, Dot, dvv_enabled(Bucket)),
+
+            %%%% merge/2
+            MergedObject = merge(DottedPutObject, OldObject),
+
+            %%%% merge/2 後にマージ+インクレメントした vclock を設定する
+            set_vclock(MergedObject, FrontierClock)
+    end.
+
+%% @private assign the dot to the value only if DVV is enabled. Only
+%% call with a valid dot. Only assign dot when there is a single value
+%% in contents.
+-spec assign_dot(riak_object(), vclock:dot(), boolean()) -> riak_object().
+assign_dot(Object, Dot, true = _DVVEnabled) ->
+    #r_object{contents=[C=#r_content{metadata=Meta0}]} = Object,
+    Object#r_object{contents=[C#r_content{metadata=dict:store(?DOT, Dot, Meta0)}]};
+assign_dot(Object, _Dot, _DVVEnabled) ->
+    Object.
+
+%% @doc Merge the contents and vclocks of OldObject and NewObject.
+%%       Note: This function calls apply_updates on NewObject.
+%%       Depending on whether DVV is enabled or not, then may merge
+%%       dropping dotted and dominated siblings, otherwise keeps all
+%%       unique sibling values. NOTE: as well as being a Syntactic
+%%       merge, this is also now a semantic merge for CRDTs.  Only
+%%       call with concurrent objects. Use `syntactic_merge/2' if one
+%%       object may strictly dominate another.
+-spec merge(riak_object(), riak_object()) -> riak_object().
+merge(OldObject, NewObject) ->
+    NewObj1 = apply_updates(NewObject),
+    Bucket = bucket(OldObject),
+    DVV = dvv_enabled(Bucket),
+    {Time,  {CRDT, Contents}} = timer:tc(fun merge_contents/3, [NewObject, OldObject, DVV]),
+    riak_kv_stat:update({riak_object_merge, CRDT, Time}),
+    OldObject#r_object{contents=Contents,
+                       vclock=vclock:merge([OldObject#r_object.vclock,
+                                            NewObj1#r_object.vclock]),
+                       updatemetadata=dict:store(clean, true, dict:new()),
+                       updatevalue=undefined}.
+
+%% @doc Merge the r_objects contents by converting the inner dict to
+%%      a list, ensuring a sane order, and merging into a unique list.
+merge_contents(NewObject, OldObject, false = _DVVEnabled) ->
+    Result = lists:umerge(fun compare/2,
+                          lists:usort(fun compare/2, NewObject#r_object.contents),
+                          lists:usort(fun compare/2, OldObject#r_object.contents)),
+    {undefined, Result};
+
+%% @private with DVV enabled, use event dots in sibling metadata to
+%% remove dominated siblings and stop fake concurrency that causes
+%% sibling explsion. Also, since every sibling is iterated over (some
+%% twice!) why not merge CRDTs here, too?
+merge_contents(NewObject, OldObject, true = _DVVEnabled) ->
+    Bucket = bucket(NewObject),
+    Key = key(NewObject),
+    %% ココ、あとで戻ってくる
+    MergeAcc0 = prune_object_siblings(OldObject, vclock(NewObject)),
+    MergeAcc = prune_object_siblings(NewObject, vclock(OldObject), MergeAcc0),
+    #merge_acc{crdt=CRDT, error=Error} = MergeAcc,
+    riak_kv_crdt:log_merge_errors(Bucket, Key, CRDT, Error),
+    merge_acc_to_contents(MergeAcc).
+
+%% @private Transform a `merge_acc()' to a list of `r_content()'. The
+%% merge accumulator contains a list of non CRDT (opaque) sibling
+%% values (`keep') and merged CRDT values (`crdt'). Due to bucket
+%% types it should really only ever contain one or the other (and the
+%% accumulated CRDTs should have a single value), but it is better to
+%% be safe.
+-spec merge_acc_to_contents(merge_acc()) -> list(r_content()).
+merge_acc_to_contents(MergeAcc) ->
+    #merge_acc{keep=Keep, crdt=CRDTs} = MergeAcc,
+    %% Convert the non-CRDT sibling values back to dict metadata values.
+    %%
+    %% For improved performance, fold_contents/3 does not check for duplicates
+    %% when constructing the "Keep" list (eg. using an ordset), but instead
+    %% simply prepends kept siblings to the list. Here, we convert Keep into an
+    %% ordset equivalent with reverse/unique sort.
+    Keep2 = lists:usort(fun compare/2, lists:reverse(Keep)),
+    %% Iterate the set of converged CRDT values and turn them into
+    %% `r_content' entries.  by generating their metadata entry and
+    %% binary encoding their contents. Bucket Types should ensure this
+    %% accumulator only has one entry ever.
+    orddict:fold(fun(_Type, {Meta, CRDT}, {_, Contents}) ->
+                         {riak_kv_crdt:to_mod(CRDT),
+                          [{r_content, riak_kv_crdt:meta(Meta, CRDT),
+                           riak_kv_crdt:to_binary(CRDT)} | Contents]}
+                 end,
+                 {undefined, Keep2},
+                 CRDTs).
+
+#+end_src
+
+#+begin_src erlang
+
+%% @private de-duplicates, removes dominated siblings, merges CRDTs
+-spec prune_object_siblings(riak_object(), vclock:vclock()) -> merge_acc().
+prune_object_siblings(Object, Clock) ->
+    prune_object_siblings(Object, Clock, #merge_acc{}).
+
+-spec prune_object_siblings(riak_object(), vclock:vclock(), merge_acc()) -> merge_acc().
+prune_object_siblings(Object, Clock, MergeAcc) ->
+    lists:foldl(fun(Content, Acc) ->
+                        fold_contents(Content, Acc, Clock)
+                end,
+                MergeAcc,
+                Object#r_object.contents).
+
+%% @private called once for each content entry for each object being
+%% merged. Its job is to drop siblings that are causally dominated,
+%% remove duplicate values, and merge CRDT values down to a single
+%% value.
+%%
+%% When a Riak takes a PUT, a `dot' is generated. (@See assign_dot/2)
+%% for the PUT and placed in `riak_object' metadata. The cases below
+%% use this `dot' to decide if a sibling value has been superceded,
+%% and should therefore be dropped.
+%%
+%% Based on the work by Baquero et al:
+%%
+%% Efficient causality tracking in distributed storage systems with
+%% dotted version vectors
+%% http://doi.acm.org/10.1145/2332432.2332497
+%% Nuno Preguiça, Carlos Bauqero, Paulo Sérgio Almeida, Victor Fonte,
+%% and Ricardo Gonçalves. 2012
+-spec fold_contents(r_content(), merge_acc(), vclock:vclock()) -> merge_acc().
+%%%%  最初の呼び出し元
+%%%%  MergeAcc0 = prune_object_siblings(OldObject, vclock(NewObject)),
+%%%%  C0:    one of contents in OldObject
+%%%%  Clock: vclock in NewObject
+fold_contents({r_content, Dict, Value}=C0, MergeAcc, Clock) ->
+    #merge_acc{drop=Drop, keep=Keep, crdt=CRDT, error=Error} = MergeAcc,
+    %% Old の content から dot を持ってくる
+    case get_dot(Dict) of
+        %%%% Dot found
+        %%%% pure dot = no timestamp
+        {ok, {Dot, PureDot}} ->
+            case {vclock:descends_dot(Clock, Dot), is_drop_candidate(PureDot, Drop)} of
+                %%%% ひとまずスルー。。。
+                {true, true} ->
+                    %% When the exact same dot is present in both
+                    %% objects siblings, we keep that value. Without
+                    %% this merging an object with itself would result
+                    %% in an object with no values at all, since an
+                    %% object's vector clock always dominates all its
+                    %% dots. However, due to riak_kv#679, and
+                    %% backup-restore it is possible for two objects
+                    %% to have dots with the same {id, count} but
+                    %% different timestamps (@see is_drop_candidate/2
+                    %% below), and for the referenced values to be
+                    %% _different_ too. We need to include both dotted
+                    %% values, and let the list sort/merge ensure that
+                    %% only one sibling for a pair of normal dots is
+                    %% returned.  Hence get the other dots contents,
+                    %% should be identical, but Skewed Dots mean we
+                    %% can't guarantee that, the merge will dedupe for
+                    %% us.
+                    DC = get_drop_candidate(PureDot, Drop),
+                    MergeAcc#merge_acc{keep=[C0, DC | Keep]};
+                {true, false} ->
+                    %% The `dot' is dominated by the other object's
+                    %% vclock. This means that the other object has a
+                    %% value that is the result of a PUT that
+                    %% reconciled this sibling value, we can therefore
+                    %% (potentialy, see above) drop this value.
+                    %%%%
+                    %%%% [Dot in a content of OldObject] < [vclock in NewObject]
+                    MergeAcc#merge_acc{drop=add_drop_candidate(PureDot, C0, Drop)};
+                {false, _} ->
+                    %% The other object's vclock does not contain (or
+                    %% dominate) this sibling's `dot'. That means this
+                    %% is a genuinely concurrent (or sibling) value
+                    %% and should be kept for the user to reconcile.
+                    MergeAcc#merge_acc{keep=[C0|Keep]}
+            end;
+        %% No dot found in MD
+        undefined ->
+            %% Both CRDTs and legacy data don't have dots. Legacy data
+            %% because it was written before DVV (or with DVV turned
+            %% off.) That means keep this sibling. We cannot know if
+            %% it is dominated. This is the pre-DVV behaviour.
+            %%
+            %% CRDTs values do not get a dot as they are merged by
+            %% Riak, not by the client. A CRDT PUT _NEVER_ overwrites
+            %% existing values in Riak, it is always merged with
+            %% them. The resulting value then does not have a single
+            %% event origin. Instead it is a merge of many events. In
+            %% DVVSets (referenced above) there is an `anonymous list'
+            %% for values that have no single event. In Riak we
+            %% already have that, by having an `undefined' dot. We
+            %% could store all the dots for a CRDT as a clock, but it
+            %% would need complex logic to prune.
+            %%
+            %% Since there are no dots for CRDT values, there can be
+            %% sibling values on disk. Which is a concern for sibling
+            %% explosion scenarios. To avoid such scenarios we call
+            %% out to CRDT logic to merge CRDTs into a single value
+            %% here.
+            case riak_kv_crdt:merge_value({Dict, Value}, {CRDT, [], []}) of
+                {CRDT, [], [E]} ->
+                    %% An error occurred trying to merge this sibling
+                    %% value. This means it was CRDT with some
+                    %% corruption of the binary format, or maybe a
+                    %% user's opaque binary that happens to match the
+                    %% CRDT binary start tag. Either way, gather the
+                    %% error for later logging.
+                    MergeAcc#merge_acc{error=[E | Error]};
+                {CRDT, [{Dict, Value}], []} ->
+                    %% The sibling value was not a CRDT, but a
+                    %% (legacy?) un-dotted user opaque value. Add it
+                    %% to the list of values to keep.
+                    MergeAcc#merge_acc{keep=[C0|Keep]};
+                {CRDT2, [], []} ->
+                    %% The sibling was a CRDT and the CRDT accumulator
+                    %% has been updated.
+                    MergeAcc#merge_acc{crdt=CRDT2}
+            end
+    end.
+
+#+end_src
+
+
+
+
