@@ -60,6 +60,16 @@ Open Questions - 発表のためのネタ
 Logs (Part 2: 2013/11 -)
 ------------------------
 
+#27 2014/09/18
+==============
+
+- Pluggable backends, in general by @slfritchie
+
+#26 2014/09/02
+==============
+
+- Dotted Version Vector in Riak 2.0 by @shino
+
 #25 2014/08/19
 ==============
 
