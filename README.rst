@@ -60,10 +60,15 @@ Open Questions - 発表のためのネタ
 Logs (Part 2: 2013/11 -)
 ------------------------
 
+#29 2014/10/24
+==============
+
+- Bitcask (2) by @slfritchie
+
 #28 2014/10/09
 ==============
 
-- Bitcask by @slfritchie
+- Bitcask (1) by @slfritchie
 
 #27 2014/09/18
 ==============
