@@ -47,7 +47,7 @@ run_sc_test(Host, Port, N, BucketType) ->
     Retry = lists:foldl(fun({_, C}, Acc0) -> Acc0 + C end, 0, Results),
     %% io:format("~p~n", [?LINE]),
     io:format("~n"),
-    io:format("Duration: ~p ms, with total ~p retries (~p qps)~n",
+    io:format("Duration: ~p seconds, with total ~p retries (~p qps)~n",
               [Duration, Retry, (N*?ITER+Retry) / 1000.0 / Duration]),
     io:format("supposed to have ~p = (~p * ~p)~n", [N * ?ITER,
                                                     N, ?ITER]),
@@ -75,19 +75,25 @@ build_options(Pid, BTB) ->
         Error -> throw(Error)
     end.
 
+i2b(I) ->
+    list_to_binary(integer_to_list(I)).
+
+b2i(B) ->
+    list_to_integer(binary_to_list(B)).
+
 init_(Pid, BTB) ->
     %% io:format("~p~n", [?LINE]),
     RiakObj = case riakc_pb_socket:get(Pid, BTB, ?KEY) of
                   {error, notfound} ->
-                      riakc_obj:new(BTB, ?KEY, term_to_binary(0));
+                      riakc_obj:new(BTB, ?KEY, i2b(0));
                   {ok, RiakObj0} ->
-                      riakc_obj:update_value(RiakObj0, term_to_binary(0))
+                      riakc_obj:update_value(RiakObj0, i2b(0))
               end,
     ok = riakc_pb_socket:put(Pid, RiakObj).
 
 check_(Pid, BTB, Expected) ->
     {ok, RiakObj} = riakc_pb_socket:get(Pid, BTB, ?KEY),
-    Actual = binary_to_term(hd(riakc_obj:get_values(RiakObj))),
+    Actual = b2i(hd(riakc_obj:get_values(RiakObj))),
     io:format("actual value: ~p ", [Actual]),
     case Expected =:= Actual of
         true ->  io:format("\e[44m  ( ´ ▽ ` )ﾉ \e[0m~n");
@@ -101,8 +107,8 @@ run_(Pid, BTB, Count, Retry) ->
     io:format("\r ~p th task in ~p", [Count, self()]),
 
     {ok, RiakObj0} = riakc_pb_socket:get(Pid, BTB, ?KEY),
-    C = binary_to_term(hd(riakc_obj:get_values(RiakObj0))),
-    RiakObj = riakc_obj:update_value(RiakObj0, term_to_binary(C+1)),
+    C = b2i(hd(riakc_obj:get_values(RiakObj0))),
+    RiakObj = riakc_obj:update_value(RiakObj0, i2b(C+1)),
     case riakc_pb_socket:put(Pid, RiakObj) of
         ok ->
             run_(Pid, BTB, Count-1, Retry);
